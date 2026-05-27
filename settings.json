@@ -1,0 +1,53 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/joefrasca/claude-work/.claude/hooks/pre-tool-guard.sh",
+            "args": []
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/joefrasca/claude-work/.claude/hooks/post-tool-logger.sh",
+            "args": [],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/joefrasca/claude-work/.claude/hooks/notify.sh",
+            "args": [],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/joefrasca/claude-work/.claude/hooks/session-log.sh",
+            "args": [],
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

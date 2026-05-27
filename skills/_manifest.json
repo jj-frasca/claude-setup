@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "last_audited": "2026-05-27",
+  "skills": [
+    {
+      "id": "skill-builder",
+      "name": "Skill Builder",
+      "path": "~/.claude/skills/skill-builder/",
+      "tier": "active",
+      "source": "custom",
+      "created": "2026-05-27",
+      "notes": "Creates new skills from described pain points. Manual-only."
+    },
+    {
+      "id": "skill-auditor",
+      "name": "Skill Auditor",
+      "path": "~/.claude/skills/skill-auditor/",
+      "tier": "active",
+      "source": "custom",
+      "created": "2026-05-27",
+      "notes": "Audits manifest + usage logs. Run weekly or after 10+ log entries."
+    }
+  ],
+  "tier_definitions": {
+    "core": "High-frequency, high-value. Auto-invoke on. Listed first.",
+    "active": "Regular use. Standard invocation.",
+    "inactive": "Not used in 14+ days. Flagged for review.",
+    "candidate": "Newly created, under evaluation (< 5 uses).",
+    "retired": "Archived to ~/.claude/skills/_archive/. Not loaded."
+  },
+  "tier_rules": {
+    "promote_to_core": "Manual, after /skill-auditor review shows high consistent value.",
+    "demote_to_inactive": "14+ days unused, or 3+ [DEGRADED] flags in session history.",
+    "retire": "Inactive 30+ days with no open gap depending on it."
+  },
+  "gap_log": []
+}

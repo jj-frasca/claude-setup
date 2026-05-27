@@ -1,0 +1,13 @@
+# Session data — contains conversation content and transcript paths
+_session_logs/
+skills/_usage_log.jsonl
+
+# Auto-memory — can contain project-specific context from conversations
+memory/
+
+# Local settings overrides
+settings.local.json
+.mcp.local.json
+
+# macOS
+.DS_Store
