@@ -9,5 +9,8 @@ memory/
 settings.local.json
 .mcp.local.json
 
+# Daily automation reports and logs
+_reports/
+
 # macOS
 .DS_Store

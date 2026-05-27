@@ -48,6 +48,41 @@ sed -i '' "s|\$HOME|$HOME|g" "$CLAUDE_DIR/settings.json"
 echo "Files installed."
 echo ""
 
+# Set up daily automation (cron scripts + launchd agents)
+echo "Setting up daily automation..."
+
+mkdir -p "$HOME/.claude/_reports"
+chmod +x "$REPO_DIR/cron/setup-cron-auth.sh" \
+         "$REPO_DIR/cron/self-heal.sh" \
+         "$REPO_DIR/cron/memory-consolidate.sh" \
+         "$REPO_DIR/cron/skills-track.sh"
+
+LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
+mkdir -p "$LAUNCH_AGENTS_DIR"
+
+for plist in selfheal memory skills; do
+  src="$REPO_DIR/launchd/com.jjfrasca.${plist}.plist"
+  dst="$LAUNCH_AGENTS_DIR/com.jjfrasca.${plist}.plist"
+  cp -f "$src" "$dst"
+
+  launchctl unload "$dst" 2>/dev/null || true
+  launchctl load -w "$dst" && echo "  Loaded: com.jjfrasca.$plist" \
+    || echo "  [WARN] Failed to load: com.jjfrasca.$plist (check Console.app)"
+done
+
+echo ""
+echo "Daily automation installed. Three launchd jobs:"
+echo "  5:00 PM  — self-heal      (session failure analysis)"
+echo " 10:00 PM  — memory         (memory deduplication)"
+echo " 10:30 PM  — skills-track   (skill usage → preferred_skills.md)"
+echo ""
+echo "REQUIRED one-time steps:"
+echo "  1. Run: bash $REPO_DIR/cron/setup-cron-auth.sh"
+echo "  2. Set Slack webhook (optional):"
+echo "     echo 'https://hooks.slack.com/services/YOUR/URL' > ~/.claude/.slack_webhook"
+echo "     chmod 600 ~/.claude/.slack_webhook"
+echo ""
+
 # Add repomix MCP (requires claude CLI)
 if command -v claude &>/dev/null; then
   echo "Adding repomix MCP server..."

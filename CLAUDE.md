@@ -41,3 +41,6 @@ Proactively suggest a model switch when the task clearly warrants it.
 - No multi-paragraph docstrings.
 - No backwards-compatibility hacks for removed code.
 - No speculative abstractions — solve the actual problem.
+
+## Live Skill Preferences
+See `rules/preferred_skills.md` — auto-updated nightly by `cron/skills-track.sh`.

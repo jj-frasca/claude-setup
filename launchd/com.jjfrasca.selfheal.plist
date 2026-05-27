@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jjfrasca.selfheal</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/joefrasca/claude-work/.claude/cron/self-heal.sh</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>17</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>/Users/joefrasca</string>
+    <key>USER</key>
+    <string>joefrasca</string>
+    <key>SHELL</key>
+    <string>/bin/zsh</string>
+    <key>PATH</key>
+    <string>/Users/joefrasca/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/joefrasca/.claude/_reports/cron-selfheal.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/joefrasca/.claude/_reports/cron-selfheal.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

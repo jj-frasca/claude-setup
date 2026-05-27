@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jjfrasca.slackbot</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/joefrasca/claude-work/.claude/cron/slack-bot.py</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>/Users/joefrasca</string>
+    <key>USER</key>
+    <string>joefrasca</string>
+    <key>PATH</key>
+    <string>/Users/joefrasca/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/joefrasca/claude-work</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/joefrasca/.claude/_reports/slack-bot.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/joefrasca/.claude/_reports/slack-bot.log</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>
