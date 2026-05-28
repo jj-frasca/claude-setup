@@ -155,6 +155,51 @@ def cmd_status() -> str:
     )
 
 
+def cmd_cost() -> str:
+    """Return API cost breakdown from cron.log."""
+    import datetime, re
+    cron_log = os.path.join(HOME, ".claude/_reports/cron.log")
+    if not os.path.exists(cron_log):
+        return "_(no cron log yet)_"
+    today = datetime.date.today().isoformat()
+    week_start = (datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())).isoformat()
+    by_job_today: dict = {}
+    by_job_week: dict = {}
+    with open(cron_log) as f:
+        for raw in f:
+            try:
+                e = json.loads(raw.strip())
+                ts = e.get("ts", "")
+                detail = e.get("detail", "")
+                job = e.get("job", "?")
+                if job in ("compact", "stop-failure"):
+                    continue
+                m = re.search(r'cost=([\d.]+)', detail)
+                if not m:
+                    continue
+                cost = float(m.group(1))
+                if ts.startswith(today):
+                    by_job_today[job] = by_job_today.get(job, 0) + cost
+                if ts[:10] >= week_start:
+                    by_job_week[job] = by_job_week.get(job, 0) + cost
+            except Exception:
+                pass
+    lines = ["*API Cost Breakdown*"]
+    if by_job_today:
+        total_today = sum(by_job_today.values())
+        lines.append(f"*Today ({today}):* ${total_today:.3f}")
+        for job, cost in sorted(by_job_today.items()):
+            lines.append(f"  {job}: ${cost:.3f}")
+    else:
+        lines.append(f"*Today:* $0.000 (no runs yet)")
+    if by_job_week:
+        total_week = sum(by_job_week.values())
+        lines.append(f"*This week (since {week_start}):* ${total_week:.3f}")
+        est_month = total_week / max(1, (datetime.date.today() - datetime.date.fromisoformat(week_start)).days + 1) * 30
+        lines.append(f"  Estimated monthly: ${est_month:.2f}")
+    return "\n".join(lines)
+
+
 def cmd_memory() -> str:
     """Return recent memory index entries."""
     memory_md = os.path.join(HOME, ".claude/projects/-Users-joefrasca-claude-work/memory/MEMORY.md")
@@ -225,6 +270,10 @@ def handle_message(text: str, channel: str):
         post_to_slack(channel, cmd_report())
         return
 
+    if text_lower in ("/cost", "cost", "!cost"):
+        post_to_slack(channel, cmd_cost())
+        return
+
     if text_lower in ("/help", "help", "!help"):
         post_to_slack(channel, (
             "*Claude Slack Bot*\n"
@@ -232,6 +281,7 @@ def handle_message(text: str, channel: str):
             "`/report` — latest self-heal findings\n"
             "`/memory` — show memory index entries\n"
             "`/heal` — manually trigger self-heal\n"
+            "`/cost` — API cost breakdown (today + this week)\n"
             "`/help` — show this message\n"
             "Anything else — forwarded to Claude Code (max $2)"
         ))
