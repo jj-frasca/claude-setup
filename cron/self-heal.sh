@@ -76,7 +76,12 @@ Supplemental context:
 - Recent cron runs: $LAST_CRON
 - Recent tool failures (last 20, from PostToolUseFailure hook): ${RECENT_TOOL_FAILURES:-(none yet)}
 
-For each transcript file that exists and is readable, scan for:
+For each transcript file, use efficient scanning:
+- For large files (>500KB): use Bash grep to scan for patterns rather than reading line-by-line
+  e.g. grep -i "error\|failed\|wrong\|degraded\|rate.limit\|retry" <path> | tail -50
+- For small files: use Read tool to read the full content
+
+Scan for:
 1. Tool errors — any tool that returned an error, especially if retried multiple times
 2. User corrections — messages containing words like 'no', 'stop', 'undo', 'revert', 'wrong', 'not that', 'actually'
 3. Retry storms — same tool called 3+ times in a row with similar inputs
