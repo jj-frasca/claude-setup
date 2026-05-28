@@ -16,12 +16,18 @@ TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // ""')
 if [[ -z "$TRANSCRIPT" ]]; then exit 0; fi
 
 SESSION=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
+TITLE=$(echo "$INPUT" | jq -r '.session_title // ""' 2>/dev/null)
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 LOG_DIR="$HOME/.claude/_session_logs"
 mkdir -p "$LOG_DIR"
 
-printf '{"ts":"%s","session":"%s","transcript":"%s"}\n' \
-  "$TIMESTAMP" "$SESSION" "$TRANSCRIPT" >> "$LOG_DIR/index.jsonl"
+if [[ -n "$TITLE" ]]; then
+  printf '{"ts":"%s","session":"%s","title":"%s","transcript":"%s"}\n' \
+    "$TIMESTAMP" "$SESSION" "$(echo "$TITLE" | sed 's/"/\\"/g')" "$TRANSCRIPT" >> "$LOG_DIR/index.jsonl"
+else
+  printf '{"ts":"%s","session":"%s","transcript":"%s"}\n' \
+    "$TIMESTAMP" "$SESSION" "$TRANSCRIPT" >> "$LOG_DIR/index.jsonl"
+fi
 
 exit 0

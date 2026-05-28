@@ -38,6 +38,11 @@ TRANSCRIPT_PATHS=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
   | sort -u \
   | while read -r p; do [ -f "$p" ] && echo "$p"; done || true)
 
+# Build a title map for the session index entries from today
+SESSION_TITLES=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
+  | jq -r 'select(.title != null and .title != "") | "\(.session[0:8]): \(.title)"' 2>/dev/null \
+  | head -20 | tr '\n' '|' || echo "")
+
 SESSION_COUNT=$(echo "$TRANSCRIPT_PATHS" | grep -c '.' 2>/dev/null || echo 0)
 
 if [[ "$SESSION_COUNT" -eq 0 ]]; then
@@ -66,6 +71,7 @@ ANALYSIS_PROMPT="You are analyzing Claude Code session transcripts to identify i
 Today is $TODAY. Analyze these transcript files (paths): $TRANSCRIPT_LIST
 
 Supplemental context:
+- Session titles (session_id[0:8]: title): ${SESSION_TITLES:-(titles not yet captured)}
 - Recent commits (last 24h): $GIT_LOG_24H
 - Recent cron runs: $LAST_CRON
 - Recent tool failures (last 20, from PostToolUseFailure hook): ${RECENT_TOOL_FAILURES:-(none yet)}
