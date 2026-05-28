@@ -7,6 +7,12 @@ CRON_LOG="$HOME/.claude/_reports/cron.log"
 TODAY=$(date +"%Y-%m-%d")
 NOW=$(date "+%Y-%m-%d %I:%M %p")
 
+TOOL_FAIL_LOG="$HOME/.claude/_session_logs/tool-failures.jsonl"
+RECENT_TOOL_FAILS=""
+if [[ -f "$TOOL_FAIL_LOG" ]]; then
+  RECENT_TOOL_FAILS=$(tail -5 "$TOOL_FAIL_LOG" | jq -r '"  \(.ts[0:16]) \(.tool): \(.target[0:50])" + (if .error != "" then " → \(.error[0:60])" else "" end)' 2>/dev/null || true)
+fi
+
 if [[ -f "$CRON_LOG" ]]; then
   # Show last 3 actual cron job runs (exclude hook events: compact, stop-failure)
   CRON_SUMMARY=$(grep -v '"job":"compact"\|"job":"stop-failure"' "$CRON_LOG" 2>/dev/null | tail -3 | while IFS= read -r line; do
@@ -61,7 +67,10 @@ $CRON_SUMMARY
 
 LaunchAgents:
   self-heal: $SH_STATUS  memory: $MEM_STATUS  skills: $SK_STATUS  slack-bot: $BOT_STATUS  cloudflared: $CF_STATUS${TUNNEL_URL:+
-  tunnel: $TUNNEL_URL}"
+  tunnel: $TUNNEL_URL}${RECENT_TOOL_FAILS:+
+
+Recent tool failures:
+$RECENT_TOOL_FAILS}"
 
 printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
   "$(echo "$CONTEXT" | sed 's/"/\\"/g' | tr '\n' '|' | sed 's/|/\\n/g')"
