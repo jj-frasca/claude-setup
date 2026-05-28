@@ -6,6 +6,29 @@
 CRON_LOG="$HOME/.claude/_reports/cron.log"
 TODAY=$(date +"%Y-%m-%d")
 NOW=$(date "+%Y-%m-%d %I:%M %p")
+SESSION_INDEX="$HOME/.claude/_session_logs/index.jsonl"
+
+TODAY_SESSIONS=0
+if [[ -f "$SESSION_INDEX" ]]; then
+  TODAY_SESSIONS=$(grep -c "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null || echo 0)
+fi
+
+LAST_COMMIT=""
+if [[ -d "$HOME/claude-work/.claude/.git" ]]; then
+  LAST_COMMIT=$(git -C "$HOME/claude-work/.claude" log --oneline -1 2>/dev/null | cut -c1-72 || echo "")
+fi
+
+CRON_TODAY=""
+if [[ -f "$CRON_LOG" ]]; then
+  CRON_OK=$(grep "\"ts\":\"${TODAY}" "$CRON_LOG" 2>/dev/null \
+    | grep '"status":"ok"' | grep -v '"job":"compact"' \
+    | jq -r '.job' 2>/dev/null | sort -u | tr '\n' ',' | sed 's/,$//' || echo "")
+  CRON_ERR=$(grep "\"ts\":\"${TODAY}" "$CRON_LOG" 2>/dev/null \
+    | grep '"status":"error"' | grep -v '"job":"stop-failure"' \
+    | jq -r '.job' 2>/dev/null | sort -u | tr '\n' ',' | sed 's/,$//' || echo "")
+  [[ -n "$CRON_OK" ]] && CRON_TODAY="✓ ${CRON_OK}"
+  [[ -n "$CRON_ERR" ]] && CRON_TODAY="${CRON_TODAY}${CRON_TODAY:+ }✗ ${CRON_ERR}"
+fi
 
 TOOL_FAIL_LOG="$HOME/.claude/_session_logs/tool-failures.jsonl"
 RECENT_TOOL_FAILS=""
@@ -60,7 +83,8 @@ CF_STATUS=$(check_agent "com.jjfrasca.cloudflared")
 TUNNEL_URL=$(cat "$HOME/.claude/.slack_tunnel_url" 2>/dev/null || echo "")
 
 CONTEXT="Session started: $NOW
-Today: $TODAY
+Today: $TODAY${TODAY_SESSIONS:+ · ${TODAY_SESSIONS} session(s)}${CRON_TODAY:+ · cron: ${CRON_TODAY}}${LAST_COMMIT:+
+Last commit: ${LAST_COMMIT}}
 
 Cron (last 3 runs):
 $CRON_SUMMARY

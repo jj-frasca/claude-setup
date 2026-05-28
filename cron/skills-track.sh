@@ -40,8 +40,6 @@ Your task:
 
 Then write a new file at: $PREFERRED_SKILLS_FILE
 
-Then write a new file at: $PREFERRED_SKILLS_FILE
-
 The file MUST be ≤45 lines and follow this EXACT format (replace [] placeholders with real data):
 # Preferred Skills & Tool Patterns
 _Auto-updated $(date +%Y-%m-%d) by skills-track.sh_
