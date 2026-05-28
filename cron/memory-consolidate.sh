@@ -10,6 +10,7 @@ source "$SCRIPT_DIR/cron-env.sh"
 JOB="memory-consolidate"
 MEMORY_BACKUP_DIR="$REPORTS_DIR/memory-backup-$TODAY"
 
+START_SECONDS=$SECONDS
 echo "[$JOB] Starting — $TODAY"
 
 MEMORY_FILES=$(find "$HOME/.claude/projects" -path "*/memory/*.md" 2>/dev/null | sort)
@@ -92,8 +93,9 @@ RESULT=$(extract_json "$RAW_RESULT") || {
 MERGES=$(echo "$RESULT" | jq -r '.merges // "?"' 2>/dev/null || echo "?")
 FILES=$(echo "$RESULT" | jq -r '.files_scanned // "?"' 2>/dev/null || echo "?")
 
-echo "[$JOB] Done. $FILES file(s) scanned, $MERGES merge(s). Cost: \$$COST"
+ELAPSED=$(( SECONDS - START_SECONDS ))
+echo "[$JOB] Done. $FILES file(s) scanned, $MERGES merge(s). Cost: \$$COST (${ELAPSED}s)"
 
-SLACK_MSG="🧠 Memory [$TODAY]: $FILES file(s) scanned, $MERGES merge(s). Cost: \$$COST"
+SLACK_MSG="🧠 Memory [$TODAY]: $FILES file(s) scanned, $MERGES merge(s). Cost: \$$COST · ${ELAPSED}s"
 notify_slack "$SLACK_MSG"
 log_cron "$JOB" "ok" "files=$FILES merges=$MERGES cost=$COST"

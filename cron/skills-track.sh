@@ -14,6 +14,7 @@ PREFERRED_SKILLS_FILE="$CLAUDE_WORK/rules/preferred_skills.md"
 CUTOFF=$(date -v-30d +"%Y-%m-%d" 2>/dev/null || date -d "30 days ago" +"%Y-%m-%d" 2>/dev/null || echo "")
 # CUTOFF used in prompt as the 30-day lookback boundary
 
+START_SECONDS=$SECONDS
 echo "[$JOB] Starting — $TODAY"
 
 if [[ ! -f "$USAGE_LOG" ]] && [[ ! -f "$MANIFEST" ]]; then
@@ -39,37 +40,43 @@ Your task:
 
 Then write a new file at: $PREFERRED_SKILLS_FILE
 
-The file MUST be ≤40 lines and follow this exact format:
-\`\`\`
+Then write a new file at: $PREFERRED_SKILLS_FILE
+
+The file MUST be ≤45 lines and follow this EXACT format (replace [] placeholders with real data):
 # Preferred Skills & Tool Patterns
 _Auto-updated $(date +%Y-%m-%d) by skills-track.sh_
 
 ## Most-Used Tools (Last 30 Days)
-- [Tool]: [count] uses
-(list top 5 by frequency)
+- Write: N uses
+- Edit: N uses
+(top 5 tools by count; use 'No data yet' if log is empty)
+
+## Top File Types Touched
+- .ext: N edits
+(top 5 extensions by count; derived from 'file' field in usage log)
 
 ## Proactively Suggest
-- [skill-name]: [one-line trigger description]
-(list skills that should be suggested automatically based on usage patterns)
+- skill-builder: user describes a recurring pain point → propose a new skill
+- skill-auditor: after 10+ new log entries or weekly → audit manifest and usage
+(add any other skills whose patterns in usage log suggest they'd be useful)
 
 ## Watch List (Inactive >14 Days)
-- [skill-name]: last used [date or 'no recent usage']
-(list skills at risk of retirement)
+No skills inactive — [reason]
+(or list: - skill-name: last used [date])
 
 ## Notes
-[any notable patterns or recommendations, 1-3 bullet points max]
-\`\`\`
+- [1-3 concise observations about patterns, total log size, etc.]
 
-If usage log is empty or too sparse, still create the file with 'No usage data yet' sections.
-After writing the file, reply with a JSON summary:
+If the usage log doesn't exist or is empty, write 'No usage data yet' in each section.
+After writing the file, output ONLY this JSON (no other text):
 {
   \"tools_analyzed\": N,
   \"skills_active\": N,
   \"skills_watch_list\": N,
-  \"lines_written\": N
-}
-
-Return ONLY the JSON at the end."
+  \"lines_written\": N,
+  \"top_tool\": \"ToolName\",
+  \"top_extension\": \".ext\"
+}"
 
 RESPONSE=$(run_claude "$REPORTS_DIR/cron-skills-err.log" \
   "$PROMPT" \
@@ -96,10 +103,13 @@ RESULT=$(extract_json "$RAW_RESULT") || {
 
 ACTIVE=$(echo "$RESULT" | jq -r '.skills_active // "?"' 2>/dev/null || echo "?")
 WATCH=$(echo "$RESULT" | jq -r '.skills_watch_list // "?"' 2>/dev/null || echo "?")
+TOP_TOOL=$(echo "$RESULT" | jq -r '.top_tool // "?"' 2>/dev/null || echo "?")
+TOP_EXT=$(echo "$RESULT" | jq -r '.top_extension // "?"' 2>/dev/null || echo "?")
 
-echo "[$JOB] Done. $ACTIVE active skill(s), $WATCH on watch list. Cost: \$$COST"
+ELAPSED=$(( SECONDS - START_SECONDS ))
+echo "[$JOB] Done. $ACTIVE active, $WATCH watch. Top: $TOP_TOOL/$TOP_EXT. Cost: \$$COST (${ELAPSED}s)"
 echo "[$JOB] Updated: $PREFERRED_SKILLS_FILE"
 
-SLACK_MSG="🛠 Skills [$TODAY]: preferred_skills.md updated. $ACTIVE active, $WATCH on watch list. Cost: \$$COST"
+SLACK_MSG="🛠 Skills [$TODAY]: preferred_skills.md updated. $ACTIVE active, $WATCH watch. Top: $TOP_TOOL ($TOP_EXT). Cost: \$$COST · ${ELAPSED}s"
 notify_slack "$SLACK_MSG"
-log_cron "$JOB" "ok" "active=$ACTIVE watchlist=$WATCH cost=$COST"
+log_cron "$JOB" "ok" "active=$ACTIVE watchlist=$WATCH top=$TOP_TOOL cost=$COST"

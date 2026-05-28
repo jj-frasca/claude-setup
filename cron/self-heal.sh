@@ -23,6 +23,7 @@ add_cost() {
 
 # ── guard: no sessions ────────────────────────────────────────────────────────
 
+START_SECONDS=$SECONDS
 echo "[$JOB] Starting — $TODAY"
 
 if [[ ! -f "$SESSION_INDEX" ]]; then
@@ -154,7 +155,8 @@ ABSOLUTE RULES — violating these is not allowed:
 - NEVER edit CLAUDE.md or settings.json or any launchd plist
 - NEVER delete files, branches, or git history
 - NEVER make a fix you are not confident about — skip it and mark it flagged
-- ALWAYS commit any changes you make: cd ~/claude-work/.claude && git add -A && git commit -m 'self-heal: auto-apply fixes $TODAY' && git push origin master
+- ALWAYS commit any changes you make with EXACTLY: cd ~/claude-work/.claude && git add cron/ hooks/ rules/ skills/ .gitignore && git commit -m 'self-heal: auto-apply fixes $TODAY' && git push origin master
+- NEVER use git add -A or git add . — only stage the specific directories listed above
 - When writing memory files, follow the existing format in ~/.claude/projects/-Users-joefrasca-claude-work/memory/ exactly
 
 AUTO-APPLY these types:
@@ -234,10 +236,11 @@ fi
 # ── notify ────────────────────────────────────────────────────────────────────
 
 FINISH_TIME=$(date "+%-I:%M %p")
+ELAPSED=$(( SECONDS - START_SECONDS ))
 COST_FMT=$(printf "%.3f" "$TOTAL_COST" 2>/dev/null || echo "$TOTAL_COST")
 
 SLACK_MSG="🔧 *Self-Heal — $TODAY*
-$SESSION_COUNT session(s) · $ISSUE_COUNT issue(s) found · \$$COST_FMT · $FINISH_TIME
+$SESSION_COUNT session(s) · $ISSUE_COUNT issue(s) found · \$$COST_FMT · ${ELAPSED}s · $FINISH_TIME
 
 *Auto-applied:*
 $APPLIED_LINES
