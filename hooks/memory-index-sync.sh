@@ -17,26 +17,29 @@ case "$FILE" in
 esac
 
 # Extract the name slug from frontmatter
-NAME=$(grep -m1 '^name:' "$FILE" 2>/dev/null | sed 's/^name:[[:space:]]*//' | tr -d '"')
+NAME=$(grep -m1 '^name:' "$FILE" 2>/dev/null | sed 's/^name:[[:space:]]*//' | tr -d '"' | tr -d "'")
 if [[ -z "$NAME" ]]; then exit 0; fi
 
 # Find the sibling MEMORY.md
 MEMORY_MD="$(dirname "$FILE")/MEMORY.md"
 if [[ ! -f "$MEMORY_MD" ]]; then exit 0; fi
 
-# Check if this file is already indexed
+# Check if this file is already indexed (by filename)
 BASENAME=$(basename "$FILE")
 if grep -q "$BASENAME" "$MEMORY_MD" 2>/dev/null; then
   exit 0
 fi
 
 # Extract description from frontmatter for the index line
-DESC=$(grep -m1 '^description:' "$FILE" 2>/dev/null | sed 's/^description:[[:space:]]*//' | tr -d '"' | head -c 100)
+DESC=$(grep -m1 '^description:' "$FILE" 2>/dev/null | sed 's/^description:[[:space:]]*//' | tr -d '"' | head -c 120)
 if [[ -z "$DESC" ]]; then
   DESC="$NAME"
 fi
 
+# Convert slug to Title Case for display: "my-slug-name" → "My Slug Name"
+DISPLAY=$(echo "$NAME" | sed 's/-/ /g' | python3 -c "import sys; print(sys.stdin.read().strip().title())" 2>/dev/null || echo "$NAME")
+
 # Append to MEMORY.md
-printf -- '- [%s](%s) — %s\n' "$NAME" "$BASENAME" "$DESC" >> "$MEMORY_MD"
+printf -- '- [%s](%s) — %s\n' "$DISPLAY" "$BASENAME" "$DESC" >> "$MEMORY_MD"
 
 exit 0

@@ -60,6 +60,12 @@ if [[ -z "$TOKEN" ]]; then
 fi
 
 echo ""
+# Extract the raw access token from JSON blob before verification
+if echo "$TOKEN" | jq . >/dev/null 2>&1; then
+  TOKEN=$(echo "$TOKEN" | jq -r '.claudeAiOauth.accessToken // .accessToken // .')
+  echo "  Extracted access token from JSON blob."
+fi
+
 echo "Verifying token with live claude -p call..."
 export CLAUDE_CODE_OAUTH_TOKEN="$TOKEN"
 
@@ -79,10 +85,6 @@ VERIFY_OUT=$(claude -p "Reply with just the word: verified" \
 echo "  Verification response: $(echo "$VERIFY_OUT" | jq -r '.result // "ok"' 2>/dev/null || echo "ok")"
 
 mkdir -p "$(dirname "$TOKEN_FILE")"
-# Keychain may return a JSON blob — extract the raw access token
-if echo "$TOKEN" | jq . >/dev/null 2>&1; then
-  TOKEN=$(echo "$TOKEN" | jq -r '.claudeAiOauth.accessToken // .accessToken // .')
-fi
 printf '%s' "$TOKEN" > "$TOKEN_FILE"
 chmod 600 "$TOKEN_FILE"
 
