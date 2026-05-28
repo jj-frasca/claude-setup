@@ -50,10 +50,15 @@ fi
 echo "[$JOB] Pass 1: analyzing $SESSION_COUNT session(s)..."
 
 TRANSCRIPT_LIST=$(echo "$TRANSCRIPT_PATHS" | head -20 | paste -sd ',' -)
+TOOL_FAILURES_LOG="$HOME/.claude/_session_logs/tool-failures.jsonl"
 
 # Gather supplemental context
 GIT_LOG_24H=$(cd "$CLAUDE_WORK" && git log --oneline --since="24 hours ago" 2>/dev/null | head -15 || echo "(no git log available)")
 LAST_CRON=$(tail -5 "$REPORTS_DIR/cron.log" 2>/dev/null | jq -r '"\(.ts[0:16]) \(.job): \(.status) (\(.detail))"' 2>/dev/null | tr '\n' '|' || echo "(none)")
+RECENT_TOOL_FAILURES=""
+if [[ -f "$TOOL_FAILURES_LOG" ]]; then
+  RECENT_TOOL_FAILURES=$(tail -20 "$TOOL_FAILURES_LOG" | jq -r '"\(.ts[0:16]) \(.tool)|\(.target[0:60])|\(.error[0:80])"' 2>/dev/null | tr '\n' '§' || echo "")
+fi
 
 ANALYSIS_PROMPT="You are analyzing Claude Code session transcripts to identify improvement opportunities.
 
@@ -62,6 +67,7 @@ Today is $TODAY. Analyze these transcript files (paths): $TRANSCRIPT_LIST
 Supplemental context:
 - Recent commits (last 24h): $GIT_LOG_24H
 - Recent cron runs: $LAST_CRON
+- Recent tool failures (last 20, from PostToolUseFailure hook): ${RECENT_TOOL_FAILURES:-(none yet)}
 
 For each transcript file that exists and is readable, scan for:
 1. Tool errors — any tool that returned an error, especially if retried multiple times

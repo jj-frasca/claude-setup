@@ -8,13 +8,22 @@ TODAY=$(date +"%Y-%m-%d")
 NOW=$(date "+%Y-%m-%d %I:%M %p")
 
 if [[ -f "$CRON_LOG" ]]; then
-  CRON_SUMMARY=$(tail -3 "$CRON_LOG" | while IFS= read -r line; do
+  # Show last 3 actual cron job runs (exclude hook events: compact, stop-failure)
+  CRON_SUMMARY=$(grep -v '"job":"compact"\|"job":"stop-failure"' "$CRON_LOG" 2>/dev/null | tail -3 | while IFS= read -r line; do
     job=$(echo "$line" | jq -r '.job // "?"' 2>/dev/null)
     status=$(echo "$line" | jq -r '.status // "?"' 2>/dev/null)
     detail=$(echo "$line" | jq -r '.detail // ""' 2>/dev/null)
     ts=$(echo "$line" | jq -r '.ts // ""' 2>/dev/null | cut -c1-16)
     echo "  $ts $job: $status ($detail)"
   done)
+  # Last stop-failure event (if any in last 24h)
+  RECENT_FAIL=$(grep '"job":"stop-failure"' "$CRON_LOG" 2>/dev/null | tail -1)
+  if [[ -n "$RECENT_FAIL" ]]; then
+    fail_ts=$(echo "$RECENT_FAIL" | jq -r '.ts // ""' 2>/dev/null | cut -c1-16)
+    fail_detail=$(echo "$RECENT_FAIL" | jq -r '.detail // ""' 2>/dev/null)
+    CRON_SUMMARY="${CRON_SUMMARY}
+  ⚠️ $fail_ts stop-failure: $fail_detail"
+  fi
 else
   CRON_SUMMARY="  (no cron runs yet)"
 fi
