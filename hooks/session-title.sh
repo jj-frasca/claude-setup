@@ -5,7 +5,17 @@
 INPUT=$(cat)
 
 EXISTING_TITLE=$(echo "$INPUT" | jq -r '.session_title // ""' 2>/dev/null)
-if [[ -n "$EXISTING_TITLE" ]]; then exit 0; fi
+if [[ -n "$EXISTING_TITLE" ]]; then
+  SESSION=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null)
+  if [[ -n "$SESSION" ]]; then
+    TITLE_FILE="$HOME/.claude/_session_logs/titles/${SESSION}.txt"
+    if [[ ! -f "$TITLE_FILE" ]]; then
+      mkdir -p "$(dirname "$TITLE_FILE")"
+      printf '%s' "$EXISTING_TITLE" > "$TITLE_FILE"
+    fi
+  fi
+  exit 0
+fi
 
 SESSION=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null)
 TITLE_FILE="$HOME/.claude/_session_logs/titles/${SESSION}.txt"
