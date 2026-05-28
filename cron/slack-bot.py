@@ -52,6 +52,34 @@ def post_to_slack(channel: str, text: str):
     urllib.request.urlopen(req, timeout=10)
 
 
+def _system_context() -> str:
+    """Build a brief system context string for Claude queries from Slack."""
+    import datetime
+    today = datetime.date.today().isoformat()
+    cron_log = os.path.join(HOME, ".claude/_reports/cron.log")
+    last_runs = []
+    if os.path.exists(cron_log):
+        with open(cron_log) as f:
+            for raw in f:
+                try:
+                    e = json.loads(raw.strip())
+                    if e.get("job") not in ("compact", "stop-failure"):
+                        last_runs.append(e)
+                except Exception:
+                    pass
+    recent = "\n".join(
+        f"  {e.get('ts','')[:16]} {e.get('job','?')}: {e.get('status','?')}"
+        for e in last_runs[-3:]
+    ) or "  (none)"
+    return (
+        f"You are Claude, helping Joe Frasca manage his Claude Code automation setup.\n"
+        f"Today: {today}. Setup lives at ~/claude-work/.claude/\n"
+        f"Three daily cron jobs: self-heal (5PM PDT), memory-consolidate (10PM PDT), skills-track (11PM PDT).\n"
+        f"Recent cron runs:\n{recent}\n"
+        f"Answer concisely. You have Read/Bash/Write/Edit/Glob/Grep tools available.\n"
+    )
+
+
 def run_claude(prompt: str) -> str:
     token_path = f"{HOME}/.claude/.claude_token"
     env = os.environ.copy()
@@ -65,9 +93,10 @@ def run_claude(prompt: str) -> str:
             pass
         env["CLAUDE_CODE_OAUTH_TOKEN"] = raw
 
+    full_prompt = _system_context() + "\nUser question: " + prompt
     result = subprocess.run(
         [
-            CLAUDE_BIN, "-p", prompt,
+            CLAUDE_BIN, "-p", full_prompt,
             "--output-format", "json",
             "--no-session-persistence",
             "--allowedTools", "Read,Bash,Write,Edit,Glob,Grep",
