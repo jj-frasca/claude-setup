@@ -51,9 +51,17 @@ echo "[$JOB] Pass 1: analyzing $SESSION_COUNT session(s)..."
 
 TRANSCRIPT_LIST=$(echo "$TRANSCRIPT_PATHS" | head -20 | paste -sd ',' -)
 
+# Gather supplemental context
+GIT_LOG_24H=$(cd "$CLAUDE_WORK" && git log --oneline --since="24 hours ago" 2>/dev/null | head -15 || echo "(no git log available)")
+LAST_CRON=$(tail -5 "$REPORTS_DIR/cron.log" 2>/dev/null | jq -r '"\(.ts[0:16]) \(.job): \(.status) (\(.detail))"' 2>/dev/null | tr '\n' '|' || echo "(none)")
+
 ANALYSIS_PROMPT="You are analyzing Claude Code session transcripts to identify improvement opportunities.
 
 Today is $TODAY. Analyze these transcript files (paths): $TRANSCRIPT_LIST
+
+Supplemental context:
+- Recent commits (last 24h): $GIT_LOG_24H
+- Recent cron runs: $LAST_CRON
 
 For each transcript file that exists and is readable, scan for:
 1. Tool errors — any tool that returned an error, especially if retried multiple times
@@ -61,6 +69,11 @@ For each transcript file that exists and is readable, scan for:
 3. Retry storms — same tool called 3+ times in a row with similar inputs
 4. [DEGRADED] flags — any text matching '[DEGRADED]' in assistant messages
 5. Incomplete tasks — conversation ends without a clear resolution
+6. Recurring patterns — same area fixed multiple times in recent commits signals a systemic issue
+
+Also consider:
+- If the user demonstrated a clear preference or gave feedback → suggest auto-saving it as a memory entry
+- If a cron script failed or had a near-miss → suggest a bug fix
 
 Return ONLY valid JSON:
 {
