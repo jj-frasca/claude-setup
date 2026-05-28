@@ -8,6 +8,17 @@ REASON=$(echo "$INPUT" | jq -r '.stop_reason // "unknown"' 2>/dev/null)
 SESSION=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null | head -c 8)
 TIMESTAMP=$(date "+%Y-%m-%d %I:%M %p")
 
+REPORTS_DIR="$HOME/.claude/_reports"
+mkdir -p "$REPORTS_DIR"
+
+# Log to cron.log always
+printf '{"ts":"%s","job":"stop-failure","status":"error","detail":"reason=%s session=%s"}\n' \
+  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$REASON" "$SESSION" \
+  >> "$REPORTS_DIR/cron.log"
+
+# Don't send Slack for unknown edge cases
+if [[ "$REASON" == "unknown" ]]; then exit 0; fi
+
 SLACK_WEBHOOK_FILE="$HOME/.claude/.slack_webhook"
 if [[ ! -f "$SLACK_WEBHOOK_FILE" ]]; then exit 0; fi
 WEBHOOK=$(cat "$SLACK_WEBHOOK_FILE")
@@ -31,12 +42,5 @@ curl -s -X POST "$WEBHOOK" \
   -H 'Content-type: application/json' \
   -d "{\"text\":\"$ICON $MSG\"}" \
   >/dev/null 2>&1 || true
-
-# Log to cron.log
-REPORTS_DIR="$HOME/.claude/_reports"
-mkdir -p "$REPORTS_DIR"
-printf '{"ts":"%s","job":"stop-failure","status":"error","detail":"reason=%s session=%s"}\n' \
-  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$REASON" "$SESSION" \
-  >> "$REPORTS_DIR/cron.log"
 
 exit 0

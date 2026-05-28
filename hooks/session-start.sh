@@ -10,7 +10,8 @@ SESSION_INDEX="$HOME/.claude/_session_logs/index.jsonl"
 
 TODAY_SESSIONS=0
 if [[ -f "$SESSION_INDEX" ]]; then
-  TODAY_SESSIONS=$(grep -c "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null || echo 0)
+  TODAY_SESSIONS=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
+    | jq -r '.session' 2>/dev/null | sort -u | wc -l | tr -d ' ' || echo 0)
 fi
 
 LAST_COMMIT=""
