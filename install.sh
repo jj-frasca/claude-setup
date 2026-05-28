@@ -46,7 +46,7 @@ cp "$REPO_DIR/skills/skill-builder/SKILL.md" "$CLAUDE_DIR/skills/skill-builder/S
 cp "$REPO_DIR/skills/skill-auditor/SKILL.md" "$CLAUDE_DIR/skills/skill-auditor/SKILL.md"
 
 # Copy and make hooks executable
-for hook in pre-tool-guard post-tool-logger notify session-log session-start pre-compact post-compact stop-failure memory-index-sync session-title; do
+for hook in pre-tool-guard post-tool-logger post-tool-failure notify session-log session-start pre-compact post-compact stop-failure memory-index-sync session-title; do
   cp "$REPO_DIR/hooks/$hook.sh" "$CLAUDE_DIR/hooks/$hook.sh"
   chmod +x "$CLAUDE_DIR/hooks/$hook.sh"
 done
@@ -76,6 +76,9 @@ hooks = {
     "PostToolUse": [
         {"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": f"{hook_dir}/post-tool-logger.sh", "async": True}]},
         {"matcher": "Write", "hooks": [{"type": "command", "command": f"{hook_dir}/memory-index-sync.sh", "async": True}]},
+    ],
+    "PostToolUseFailure": [
+        {"hooks": [{"type": "command", "command": f"{hook_dir}/post-tool-failure.sh", "async": True}]},
     ],
     "Notification": [{"hooks": [{"type": "command", "command": f"{hook_dir}/notify.sh", "async": True}]}],
     "Stop": [{"hooks": [{"type": "command", "command": f"{hook_dir}/session-log.sh", "async": True}]}],

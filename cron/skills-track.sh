@@ -71,39 +71,28 @@ After writing the file, reply with a JSON summary:
 
 Return ONLY the JSON at the end."
 
-RESPONSE=$(claude -p "$PROMPT" \
+RESPONSE=$(run_claude "$REPORTS_DIR/cron-skills-err.log" \
+  "$PROMPT" \
   --model claude-sonnet-4-6 \
   --allowedTools "Read,Write" \
   --output-format json \
   --no-session-persistence \
   --max-turns 10 \
   --max-budget-usd 0.25 \
-  --debug-file "$REPORTS_DIR/cron-skills-debug.log" \
-  2>&1) || {
-    echo "[$JOB] ERROR: claude -p failed"
-    notify_slack "❌ Skills [$TODAY] FAILED: claude -p error. See $REPORTS_DIR/cron-skills.log"
+  --debug-file "$REPORTS_DIR/cron-skills-debug.log") || {
+    local_err=$(cat "$REPORTS_DIR/cron-skills-err.log" 2>/dev/null | head -5 | tr '\n' '|')
+    echo "[$JOB] ERROR: claude -p failed. $local_err"
+    notify_slack "❌ Skills [$TODAY] FAILED: claude -p error. $local_err"
     log_cron "$JOB" "error" "claude -p failed"
     exit 1
   }
 
 COST=$(echo "$RESPONSE" | jq -r '.total_cost_usd // "unknown"' 2>/dev/null || echo "unknown")
-RAW_RESULT=$(echo "$RESPONSE" | jq -r '.result' 2>/dev/null)
-RESULT=$(echo "$RAW_RESULT" | python3 -c "
-import sys,json,re
-text=sys.stdin.read().strip()
-text=re.sub(r'\`\`\`(?:json)?\s*','',text).strip()
-try: print(json.dumps(json.loads(text))); sys.exit()
-except: pass
-m=re.search(r'\{[\s\S]*\}',text)
-if m:
-    try: print(json.dumps(json.loads(m.group()))); sys.exit()
-    except: pass
-" 2>/dev/null)
-
-if ! echo "$RESULT" | jq . >/dev/null 2>&1; then
+RAW_RESULT=$(echo "$RESPONSE" | jq -r '.result // ""' 2>/dev/null)
+RESULT=$(extract_json "$RAW_RESULT") || {
   echo "$RAW_RESULT" > "$REPORTS_DIR/$TODAY-skills-raw.txt"
   RESULT="{}"
-fi
+}
 
 ACTIVE=$(echo "$RESULT" | jq -r '.skills_active // "?"' 2>/dev/null || echo "?")
 WATCH=$(echo "$RESULT" | jq -r '.skills_watch_list // "?"' 2>/dev/null || echo "?")

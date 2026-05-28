@@ -102,38 +102,27 @@ architectural decisions, or anything requiring destructive operations.
 Severity: 5=critical, 4=significant, 3=notable, 2=minor, 1=informational.
 Sort by severity descending. Return ONLY the JSON."
 
-ANALYSIS_RESPONSE=$(claude -p "$ANALYSIS_PROMPT" \
+ANALYSIS_RESPONSE=$(run_claude "$REPORTS_DIR/cron-selfheal-err.log" \
+  "$ANALYSIS_PROMPT" \
   --model claude-sonnet-4-6 \
   --allowedTools "Read,Bash" \
   --output-format json \
   --no-session-persistence \
   --max-turns 20 \
   --max-budget-usd 0.50 \
-  --debug-file "$REPORTS_DIR/cron-selfheal-debug.log" \
-  2>&1) || {
-    notify_slack "❌ Self-Heal [$TODAY] FAILED (Pass 1): claude -p error."
+  --debug-file "$REPORTS_DIR/cron-selfheal-debug.log") || {
+    local_err=$(cat "$REPORTS_DIR/cron-selfheal-err.log" 2>/dev/null | head -5 | tr '\n' '|')
+    notify_slack "❌ Self-Heal [$TODAY] FAILED (Pass 1): claude -p error. $local_err"
     log_cron "$JOB" "error" "pass1 failed"
     exit 1
   }
 
 add_cost "$(echo "$ANALYSIS_RESPONSE" | jq -r '.total_cost_usd // 0' 2>/dev/null || echo 0)"
-RAW=$(echo "$ANALYSIS_RESPONSE" | jq -r '.result' 2>/dev/null)
-RESULT=$(echo "$RAW" | python3 -c "
-import sys,json,re
-text=sys.stdin.read().strip()
-text=re.sub(r'\`\`\`(?:json)?\s*','',text).strip()
-try: print(json.dumps(json.loads(text))); sys.exit()
-except: pass
-m=re.search(r'\{[\s\S]*\}',text)
-if m:
-    try: print(json.dumps(json.loads(m.group()))); sys.exit()
-    except: pass
-" 2>/dev/null)
-
-if ! echo "$RESULT" | jq . >/dev/null 2>&1; then
+RAW=$(echo "$ANALYSIS_RESPONSE" | jq -r '.result // ""' 2>/dev/null)
+RESULT=$(extract_json "$RAW") || {
   echo "$RAW" > "$REPORTS_DIR/$TODAY-selfheal-raw.txt"
   RESULT="{\"generated_at\":\"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\",\"session_count\":$SESSION_COUNT,\"fixes\":[],\"error\":\"non-JSON result\"}"
-fi
+}
 
 echo "$RESULT" > "$REPORT_FILE"
 ISSUE_COUNT=$(echo "$RESULT" | jq '.fixes | length' 2>/dev/null || echo 0)
@@ -181,36 +170,27 @@ After applying all fixes and committing, return ONLY this JSON:
   \"committed\": true
 }"
 
-  REMEDIATION_RESPONSE=$(claude -p "$REMEDIATION_PROMPT" \
+  REMEDIATION_RESPONSE=$(run_claude "$REPORTS_DIR/cron-selfheal-remediation-err.log" \
+    "$REMEDIATION_PROMPT" \
     --model claude-sonnet-4-6 \
     --allowedTools "Read,Write,Edit,Bash" \
     --output-format json \
     --no-session-persistence \
     --max-turns 30 \
     --max-budget-usd 1.50 \
-    --debug-file "$REPORTS_DIR/cron-selfheal-remediation-debug.log" \
-    2>&1) || {
-      echo "[$JOB] WARNING: Pass 2 claude -p failed — skipping remediation."
+    --debug-file "$REPORTS_DIR/cron-selfheal-remediation-debug.log") || {
+      local_err2=$(cat "$REPORTS_DIR/cron-selfheal-remediation-err.log" 2>/dev/null | head -3 | tr '\n' '|')
+      echo "[$JOB] WARNING: Pass 2 claude -p failed — skipping remediation. $local_err2"
       APPLIED_LINES="  ⚠️ Remediation failed — claude -p error in Pass 2"
     }
 
   REMEDIATION_COST=$(echo "$REMEDIATION_RESPONSE" | jq -r '.total_cost_usd // 0' 2>/dev/null || echo 0)
   add_cost "$REMEDIATION_COST"
 
-  RAW_REM=$(echo "$REMEDIATION_RESPONSE" | jq -r '.result' 2>/dev/null)
-  REM_RESULT=$(echo "$RAW_REM" | python3 -c "
-import sys,json,re
-text=sys.stdin.read().strip()
-text=re.sub(r'\`\`\`(?:json)?\s*','',text).strip()
-try: print(json.dumps(json.loads(text))); sys.exit()
-except: pass
-m=re.search(r'\{[\s\S]*\}',text)
-if m:
-    try: print(json.dumps(json.loads(m.group()))); sys.exit()
-    except: pass
-" 2>/dev/null)
+  RAW_REM=$(echo "$REMEDIATION_RESPONSE" | jq -r '.result // ""' 2>/dev/null)
+  REM_RESULT=$(extract_json "$RAW_REM") || true
 
-  if echo "$REM_RESULT" | jq . >/dev/null 2>&1; then
+  if [[ -n "$REM_RESULT" ]]; then
     echo "$REM_RESULT" > "$REMEDIATION_FILE"
     APPLIED_COUNT=$(echo "$REM_RESULT" | jq '.applied | length' 2>/dev/null || echo 0)
     SKIPPED_COUNT=$(echo "$REM_RESULT" | jq '.skipped | length' 2>/dev/null || echo 0)
