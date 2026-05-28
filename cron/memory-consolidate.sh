@@ -82,7 +82,8 @@ RESPONSE=$(run_claude "$REPORTS_DIR/cron-memory-err.log" \
     exit 1
   }
 
-COST=$(echo "$RESPONSE" | jq -r '.total_cost_usd // "unknown"' 2>/dev/null || echo "unknown")
+RAW_COST=$(echo "$RESPONSE" | jq -r '.total_cost_usd // 0' 2>/dev/null || echo 0)
+COST=$(printf "%.3f" "$RAW_COST" 2>/dev/null || echo "$RAW_COST")
 RAW_RESULT=$(echo "$RESPONSE" | jq -r '.result // ""' 2>/dev/null)
 RESULT=$(extract_json "$RAW_RESULT") || {
   echo "$RAW_RESULT" > "$REPORTS_DIR/$TODAY-memory-raw.txt"
