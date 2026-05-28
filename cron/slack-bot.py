@@ -88,20 +88,42 @@ def run_claude(prompt: str) -> str:
 
 def cmd_status() -> str:
     """Return a quick status of cron jobs and launchd agents."""
+    import datetime
+    today = datetime.date.today().isoformat()
     lines = []
+    today_ok, today_err = [], []
     cron_log = os.path.join(HOME, ".claude/_reports/cron.log")
     if os.path.exists(cron_log):
         with open(cron_log) as f:
-            entries = [l.strip() for l in f if l.strip()]
-        for raw in entries[-5:]:
+            all_entries = [l.strip() for l in f if l.strip()]
+        # Filter to actual cron job runs (not compact/stop-failure hook events)
+        real_runs = []
+        for raw in all_entries:
             try:
                 e = json.loads(raw)
-                ts = e.get("ts", "")[:16]
-                lines.append(f"  {ts} {e.get('job','?')}: {e.get('status','?')} ({e.get('detail','')})")
+                if e.get("job") not in ("compact", "stop-failure"):
+                    real_runs.append(e)
+                    if e.get("ts", "").startswith(today):
+                        if e.get("status") == "ok":
+                            today_ok.append(e.get("job", "?"))
+                        else:
+                            today_err.append(e.get("job", "?"))
             except Exception:
                 pass
+        for e in real_runs[-5:]:
+            ts = e.get("ts", "")[:16]
+            lines.append(f"  {ts} {e.get('job','?')}: {e.get('status','?')} ({e.get('detail','')})")
     else:
         lines.append("  (no cron log yet)")
+
+    today_summary = ""
+    if today_ok or today_err:
+        parts = []
+        if today_ok:
+            parts.append("✓ " + ", ".join(sorted(set(today_ok))))
+        if today_err:
+            parts.append("✗ " + ", ".join(sorted(set(today_err))))
+        today_summary = "\n*Today (" + today + "):* " + " · ".join(parts)
 
     agents = {
         "self-heal":  "com.jjfrasca.selfheal",
@@ -127,7 +149,7 @@ def cmd_status() -> str:
             agent_lines.append(f"⚠️ {name} (exit {exit_code})")
 
     return (
-        "*Claude Setup Status*\n"
+        "*Claude Setup Status*" + today_summary + "\n"
         "*Last 5 cron runs:*\n" + "\n".join(lines) + "\n\n"
         "*LaunchAgents:*\n" + "\n".join(agent_lines)
     )
