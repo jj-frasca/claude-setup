@@ -79,6 +79,10 @@ VERIFY_OUT=$(claude -p "Reply with just the word: verified" \
 echo "  Verification response: $(echo "$VERIFY_OUT" | jq -r '.result // "ok"' 2>/dev/null || echo "ok")"
 
 mkdir -p "$(dirname "$TOKEN_FILE")"
+# Keychain may return a JSON blob — extract the raw access token
+if echo "$TOKEN" | jq . >/dev/null 2>&1; then
+  TOKEN=$(echo "$TOKEN" | jq -r '.claudeAiOauth.accessToken // .accessToken // .')
+fi
 printf '%s' "$TOKEN" > "$TOKEN_FILE"
 chmod 600 "$TOKEN_FILE"
 

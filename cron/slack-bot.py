@@ -56,7 +56,13 @@ def run_claude(prompt: str) -> str:
     env = os.environ.copy()
     if os.path.exists(token_path):
         with open(token_path) as f:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = f.read().strip()
+            raw = f.read().strip()
+        try:
+            data = json.loads(raw)
+            raw = data.get("claudeAiOauth", {}).get("accessToken") or data.get("accessToken") or raw
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = raw
 
     result = subprocess.run(
         [

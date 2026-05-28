@@ -12,7 +12,14 @@ if [[ ! -f "$CLAUDE_TOKEN_FILE" ]]; then
 fi
 
 export CLAUDE_CODE_OAUTH_TOKEN
-CLAUDE_CODE_OAUTH_TOKEN=$(cat "$CLAUDE_TOKEN_FILE")
+_RAW_TOKEN=$(cat "$CLAUDE_TOKEN_FILE")
+# Keychain returns a JSON blob; extract the accessToken if so
+if echo "$_RAW_TOKEN" | jq . >/dev/null 2>&1; then
+  CLAUDE_CODE_OAUTH_TOKEN=$(echo "$_RAW_TOKEN" | jq -r '.claudeAiOauth.accessToken // .accessToken // .')
+else
+  CLAUDE_CODE_OAUTH_TOKEN="$_RAW_TOKEN"
+fi
+unset _RAW_TOKEN
 
 SLACK_WEBHOOK_URL=""
 if [[ -f "$SLACK_WEBHOOK_FILE" ]]; then
