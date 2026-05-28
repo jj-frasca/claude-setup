@@ -103,22 +103,33 @@ def cmd_status() -> str:
         lines.append("  (no cron log yet)")
 
     agents = {
-        "self-heal": "com.jjfrasca.selfheal",
-        "memory":    "com.jjfrasca.memory",
-        "skills":    "com.jjfrasca.skills",
-        "slack-bot": "com.jjfrasca.slackbot",
-        "cloudflared": "com.jjfrasca.cloudflared",
+        "self-heal":  "com.jjfrasca.selfheal",
+        "memory":     "com.jjfrasca.memory",
+        "skills":     "com.jjfrasca.skills",
+        "slack-bot":  "com.jjfrasca.slackbot",
+        "cloudflared":"com.jjfrasca.cloudflared",
     }
     agent_lines = []
     for name, label in agents.items():
         r = subprocess.run(["launchctl", "list", label], capture_output=True, text=True)
-        running = "✅" if r.returncode == 0 else "❌"
-        agent_lines.append(f"{running} {name}")
+        if r.returncode != 0:
+            agent_lines.append(f"❌ {name} (not loaded)")
+            continue
+        import re as _re
+        pid_m = _re.search(r'"PID"\s*=\s*(\d+)', r.stdout)
+        exit_m = _re.search(r'"LastExitStatus"\s*=\s*(\d+)', r.stdout)
+        exit_code = int(exit_m.group(1)) >> 8 if exit_m else 0
+        if pid_m:
+            agent_lines.append(f"✅ {name} (running pid={pid_m.group(1)})")
+        elif exit_code == 0:
+            agent_lines.append(f"✅ {name} (ok)")
+        else:
+            agent_lines.append(f"⚠️ {name} (exit {exit_code})")
 
     return (
         "*Claude Setup Status*\n"
         "*Last 5 cron runs:*\n" + "\n".join(lines) + "\n\n"
-        "*LaunchAgents:* " + "  ".join(agent_lines)
+        "*LaunchAgents:*\n" + "\n".join(agent_lines)
     )
 
 
