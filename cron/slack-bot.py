@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import subprocess
 import threading
 import time
@@ -115,9 +116,8 @@ def cmd_status() -> str:
         if r.returncode != 0:
             agent_lines.append(f"❌ {name} (not loaded)")
             continue
-        import re as _re
-        pid_m = _re.search(r'"PID"\s*=\s*(\d+)', r.stdout)
-        exit_m = _re.search(r'"LastExitStatus"\s*=\s*(\d+)', r.stdout)
+        pid_m = re.search(r'"PID"\s*=\s*(\d+)', r.stdout)
+        exit_m = re.search(r'"LastExitStatus"\s*=\s*(\d+)', r.stdout)
         exit_code = int(exit_m.group(1)) >> 8 if exit_m else 0
         if pid_m:
             agent_lines.append(f"✅ {name} (running pid={pid_m.group(1)})")

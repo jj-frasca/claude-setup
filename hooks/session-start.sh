@@ -50,6 +50,8 @@ SH_STATUS=$(check_agent "com.jjfrasca.selfheal")
 MEM_STATUS=$(check_agent "com.jjfrasca.memory")
 SK_STATUS=$(check_agent "com.jjfrasca.skills")
 BOT_STATUS=$(check_agent "com.jjfrasca.slackbot")
+CF_STATUS=$(check_agent "com.jjfrasca.cloudflared")
+TUNNEL_URL=$(cat "$HOME/.claude/.slack_tunnel_url" 2>/dev/null || echo "")
 
 CONTEXT="Session started: $NOW
 Today: $TODAY
@@ -58,7 +60,8 @@ Cron (last 3 runs):
 $CRON_SUMMARY
 
 LaunchAgents:
-  self-heal: $SH_STATUS  memory: $MEM_STATUS  skills: $SK_STATUS  slack-bot: $BOT_STATUS"
+  self-heal: $SH_STATUS  memory: $MEM_STATUS  skills: $SK_STATUS  slack-bot: $BOT_STATUS  cloudflared: $CF_STATUS${TUNNEL_URL:+
+  tunnel: $TUNNEL_URL}"
 
 printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
   "$(echo "$CONTEXT" | sed 's/"/\\"/g' | tr '\n' '|' | sed 's/|/\\n/g')"

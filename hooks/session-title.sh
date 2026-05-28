@@ -4,19 +4,22 @@
 
 INPUT=$(cat)
 
-# Only set title once per session
 EXISTING_TITLE=$(echo "$INPUT" | jq -r '.session_title // ""' 2>/dev/null)
 if [[ -n "$EXISTING_TITLE" ]]; then exit 0; fi
 
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // ""' 2>/dev/null)
 if [[ -z "$PROMPT" ]]; then exit 0; fi
 
-# First 72 chars, collapse whitespace, trim trailing space
-TITLE=$(echo "$PROMPT" | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' | head -c 72 | sed 's/[[:space:]]*$//')
-# Capitalize first char
-TITLE="$(echo "${TITLE:0:1}" | tr '[:lower:]' '[:upper:]')${TITLE:1}"
+# Collapse whitespace, truncate to 72 chars (ERE for macOS BSD sed)
+TITLE=$(echo "$PROMPT" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | sed 's/[[:space:]]*$//')
+TITLE="${TITLE:0:72}"
+TITLE="${TITLE%"${TITLE##*[![:space:]]}"}"  # trim trailing space after truncation
+# Capitalize first character
+first=$(echo "${TITLE:0:1}" | tr '[:lower:]' '[:upper:]')
+TITLE="${first}${TITLE:1}"
 
-printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","sessionTitle":"%s"}}\n' \
-  "$(echo "$TITLE" | sed 's/"/\\"/g')"
+# Use jq for correct JSON encoding (handles quotes, backslashes, control chars)
+jq -n --arg title "$TITLE" \
+  '{hookSpecificOutput: {hookEventName: "UserPromptSubmit", sessionTitle: $title}}'
 
 exit 0
