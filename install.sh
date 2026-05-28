@@ -51,8 +51,49 @@ for hook in pre-tool-guard post-tool-logger notify session-log session-start pre
   chmod +x "$CLAUDE_DIR/hooks/$hook.sh"
 done
 
-# Patch project settings.json in-place: resolve $HOME so exec-form hooks have absolute paths
-sed -i '' "s|\$HOME|$HOME|g" "$REPO_DIR/settings.json"
+# Merge global hooks into ~/.claude/settings.json (preserves existing settings)
+echo "Merging hooks into $CLAUDE_DIR/settings.json..."
+HOOK_DIR="$REPO_DIR/hooks"
+python3 - <<PYEOF
+import json, os, sys
+
+home = os.environ['HOME']
+settings_path = os.path.join(home, '.claude', 'settings.json')
+hook_dir = os.environ.get('HOOK_DIR', '$HOOK_DIR')
+
+# Load existing settings (or start fresh)
+try:
+    with open(settings_path) as f:
+        settings = json.load(f)
+except Exception:
+    settings = {}
+
+# Build hooks config with absolute paths
+hooks = {
+    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": f"{hook_dir}/session-title.sh"}]}],
+    "SessionStart": [{"hooks": [{"type": "command", "command": f"{hook_dir}/session-start.sh"}]}],
+    "PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": f"{hook_dir}/pre-tool-guard.sh"}]}],
+    "PostToolUse": [
+        {"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": f"{hook_dir}/post-tool-logger.sh", "async": True}]},
+        {"matcher": "Write", "hooks": [{"type": "command", "command": f"{hook_dir}/memory-index-sync.sh", "async": True}]},
+    ],
+    "Notification": [{"hooks": [{"type": "command", "command": f"{hook_dir}/notify.sh", "async": True}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": f"{hook_dir}/session-log.sh", "async": True}]}],
+    "StopFailure": [{"matcher": "rate_limit|authentication_failed|overloaded|timeout", "hooks": [{"type": "command", "command": f"{hook_dir}/stop-failure.sh", "async": True}]}],
+    "PreCompact": [{"matcher": "auto|manual", "hooks": [{"type": "command", "command": f"{hook_dir}/pre-compact.sh"}]}],
+    "PostCompact": [{"matcher": "auto|manual", "hooks": [{"type": "command", "command": f"{hook_dir}/post-compact.sh"}]}],
+}
+
+settings['hooks'] = hooks
+settings.setdefault('cleanupPeriodDays', 90)
+settings.setdefault('awaySummaryEnabled', True)
+
+os.makedirs(os.path.dirname(settings_path), exist_ok=True)
+with open(settings_path, 'w') as f:
+    json.dump(settings, f, indent=2)
+    f.write('\n')
+print(f"  Hooks merged into {settings_path}")
+PYEOF
 
 echo "Files installed."
 echo ""
