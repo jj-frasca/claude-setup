@@ -12,6 +12,18 @@
         ]
       }
     ],
+    "PreCompact": [
+      {
+        "matcher": "auto|manual",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/joefrasca/claude-work/.claude/hooks/pre-compact.sh",
+            "args": []
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",

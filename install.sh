@@ -13,6 +13,17 @@ echo "Config dir: $CLAUDE_DIR"
 echo "Backup dir: $BACKUP_DIR"
 echo ""
 
+# Dependency check
+MISSING=()
+for cmd in jq bc python3; do
+  command -v "$cmd" &>/dev/null || MISSING+=("$cmd")
+done
+if [[ ${#MISSING[@]} -gt 0 ]]; then
+  echo "ERROR: Missing required tools: ${MISSING[*]}"
+  echo "Install with: brew install ${MISSING[*]}"
+  exit 1
+fi
+
 # Backup existing config
 mkdir -p "$BACKUP_DIR"
 for f in settings.json CLAUDE.md; do
@@ -35,7 +46,7 @@ cp "$REPO_DIR/skills/skill-builder/SKILL.md" "$CLAUDE_DIR/skills/skill-builder/S
 cp "$REPO_DIR/skills/skill-auditor/SKILL.md" "$CLAUDE_DIR/skills/skill-auditor/SKILL.md"
 
 # Copy and make hooks executable
-for hook in pre-tool-guard post-tool-logger notify session-log session-start; do
+for hook in pre-tool-guard post-tool-logger notify session-log session-start pre-compact; do
   cp "$REPO_DIR/hooks/$hook.sh" "$CLAUDE_DIR/hooks/$hook.sh"
   chmod +x "$CLAUDE_DIR/hooks/$hook.sh"
 done

@@ -80,7 +80,23 @@ RESPONSE=$(claude -p "$PROMPT" \
   }
 
 COST=$(echo "$RESPONSE" | jq -r '.total_cost_usd // "unknown"' 2>/dev/null || echo "unknown")
-RESULT=$(echo "$RESPONSE" | jq -r '.result' 2>/dev/null | sed 's/^```json//; s/^```//; s/```$//' | sed '/^$/d')
+RAW_RESULT=$(echo "$RESPONSE" | jq -r '.result' 2>/dev/null)
+RESULT=$(echo "$RAW_RESULT" | python3 -c "
+import sys,json,re
+text=sys.stdin.read().strip()
+text=re.sub(r'\`\`\`(?:json)?\s*','',text).strip()
+try: print(json.dumps(json.loads(text))); sys.exit()
+except: pass
+m=re.search(r'\{[\s\S]*\}',text)
+if m:
+    try: print(json.dumps(json.loads(m.group()))); sys.exit()
+    except: pass
+" 2>/dev/null)
+
+if ! echo "$RESULT" | jq . >/dev/null 2>&1; then
+  echo "$RAW_RESULT" > "$REPORTS_DIR/$TODAY-memory-raw.txt"
+  RESULT="{}"
+fi
 
 MERGES=$(echo "$RESULT" | jq -r '.merges // "?"' 2>/dev/null || echo "?")
 FILES=$(echo "$RESULT" | jq -r '.files_scanned // "?"' 2>/dev/null || echo "?")
