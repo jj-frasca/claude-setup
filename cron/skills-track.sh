@@ -76,14 +76,12 @@ RESPONSE=$(claude -p "$PROMPT" \
   --output-format json \
   --no-session-persistence \
   --max-budget-usd 0.25 \
-  2>&1)
-
-if [[ $? -ne 0 ]]; then
-  echo "[$JOB] ERROR: claude -p failed"
-  notify_slack "❌ Skills [$TODAY] FAILED: claude -p error. See $REPORTS_DIR/cron-skills.log"
-  log_cron "$JOB" "error" "claude -p failed"
-  exit 1
-fi
+  2>&1) || {
+    echo "[$JOB] ERROR: claude -p failed"
+    notify_slack "❌ Skills [$TODAY] FAILED: claude -p error. See $REPORTS_DIR/cron-skills.log"
+    log_cron "$JOB" "error" "claude -p failed"
+    exit 1
+  }
 
 COST=$(echo "$RESPONSE" | jq -r '.total_cost_usd // "unknown"' 2>/dev/null || echo "unknown")
 RESULT=$(echo "$RESPONSE" | jq -r '.result' 2>/dev/null | sed 's/^```json//; s/^```//; s/```$//' | sed '/^$/d')

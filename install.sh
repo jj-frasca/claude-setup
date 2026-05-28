@@ -29,21 +29,19 @@ mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/rules" \
 
 # Copy files
 cp "$REPO_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
-cp "$REPO_DIR/settings.json" "$CLAUDE_DIR/settings.json"
 cp "$REPO_DIR/rules/preferences.md" "$CLAUDE_DIR/rules/preferences.md"
 cp "$REPO_DIR/skills/_manifest.json" "$CLAUDE_DIR/skills/_manifest.json"
 cp "$REPO_DIR/skills/skill-builder/SKILL.md" "$CLAUDE_DIR/skills/skill-builder/SKILL.md"
 cp "$REPO_DIR/skills/skill-auditor/SKILL.md" "$CLAUDE_DIR/skills/skill-auditor/SKILL.md"
 
 # Copy and make hooks executable
-for hook in pre-tool-guard post-tool-logger notify session-log; do
+for hook in pre-tool-guard post-tool-logger notify session-log session-start; do
   cp "$REPO_DIR/hooks/$hook.sh" "$CLAUDE_DIR/hooks/$hook.sh"
   chmod +x "$CLAUDE_DIR/hooks/$hook.sh"
 done
 
-# Patch settings.json: replace $HOME placeholder with actual home path
-# (exec-form hooks need the resolved path, not the env var)
-sed -i '' "s|\$HOME|$HOME|g" "$CLAUDE_DIR/settings.json"
+# Patch project settings.json in-place: resolve $HOME so exec-form hooks have absolute paths
+sed -i '' "s|\$HOME|$HOME|g" "$REPO_DIR/settings.json"
 
 echo "Files installed."
 echo ""

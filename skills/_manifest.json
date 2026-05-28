@@ -5,7 +5,7 @@
     {
       "id": "skill-builder",
       "name": "Skill Builder",
-      "path": "~/.claude/skills/skill-builder/",
+      "path": "~/claude-work/.claude/skills/skill-builder/",
       "tier": "active",
       "source": "custom",
       "created": "2026-05-27",
@@ -14,7 +14,7 @@
     {
       "id": "skill-auditor",
       "name": "Skill Auditor",
-      "path": "~/.claude/skills/skill-auditor/",
+      "path": "~/claude-work/.claude/skills/skill-auditor/",
       "tier": "active",
       "source": "custom",
       "created": "2026-05-27",

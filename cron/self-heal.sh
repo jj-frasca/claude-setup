@@ -95,13 +95,11 @@ ANALYSIS_RESPONSE=$(claude -p "$ANALYSIS_PROMPT" \
   --output-format json \
   --no-session-persistence \
   --max-budget-usd 0.50 \
-  2>&1)
-
-if [[ $? -ne 0 ]]; then
-  notify_slack "❌ Self-Heal [$TODAY] FAILED (Pass 1): claude -p error."
-  log_cron "$JOB" "error" "pass1 failed"
-  exit 1
-fi
+  2>&1) || {
+    notify_slack "❌ Self-Heal [$TODAY] FAILED (Pass 1): claude -p error."
+    log_cron "$JOB" "error" "pass1 failed"
+    exit 1
+  }
 
 add_cost "$(echo "$ANALYSIS_RESPONSE" | jq -r '.total_cost_usd // 0' 2>/dev/null || echo 0)"
 RAW=$(echo "$ANALYSIS_RESPONSE" | jq -r '.result' 2>/dev/null)
@@ -136,7 +134,7 @@ ABSOLUTE RULES — violating these is not allowed:
 - NEVER edit CLAUDE.md or settings.json or any launchd plist
 - NEVER delete files, branches, or git history
 - NEVER make a fix you are not confident about — skip it and mark it flagged
-- ALWAYS commit any changes you make: cd ~/claude-work/.claude && git add -A && git commit -m 'self-heal: auto-apply fixes $TODAY'
+- ALWAYS commit any changes you make: cd ~/claude-work/.claude && git add -A && git commit -m 'self-heal: auto-apply fixes $TODAY' && git push origin master
 - When writing memory files, follow the existing format in ~/.claude/projects/-Users-joefrasca-claude-work/memory/ exactly
 
 AUTO-APPLY these types:
@@ -164,7 +162,10 @@ After applying all fixes and committing, return ONLY this JSON:
     --output-format json \
     --no-session-persistence \
     --max-budget-usd 1.50 \
-    2>&1)
+    2>&1) || {
+      echo "[$JOB] WARNING: Pass 2 claude -p failed — skipping remediation."
+      APPLIED_LINES="  ⚠️ Remediation failed — claude -p error in Pass 2"
+    }
 
   REMEDIATION_COST=$(echo "$REMEDIATION_RESPONSE" | jq -r '.total_cost_usd // 0' 2>/dev/null || echo 0)
   add_cost "$REMEDIATION_COST"
