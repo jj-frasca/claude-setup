@@ -7,6 +7,17 @@ INPUT=$(cat)
 EXISTING_TITLE=$(echo "$INPUT" | jq -r '.session_title // ""' 2>/dev/null)
 if [[ -n "$EXISTING_TITLE" ]]; then exit 0; fi
 
+SESSION=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null)
+TITLE_FILE="$HOME/.claude/_session_logs/titles/${SESSION}.txt"
+
+# If we already wrote a title for this session, re-emit it and exit
+if [[ -n "$SESSION" && -f "$TITLE_FILE" ]]; then
+  TITLE=$(cat "$TITLE_FILE" 2>/dev/null)
+  jq -n --arg title "$TITLE" \
+    '{hookSpecificOutput: {hookEventName: "UserPromptSubmit", sessionTitle: $title}}'
+  exit 0
+fi
+
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // ""' 2>/dev/null)
 if [[ -z "$PROMPT" ]]; then exit 0; fi
 
@@ -18,7 +29,12 @@ TITLE="${TITLE%"${TITLE##*[![:space:]]}"}"  # trim trailing space after truncati
 first=$(echo "${TITLE:0:1}" | tr '[:lower:]' '[:upper:]')
 TITLE="${first}${TITLE:1}"
 
-# Use jq for correct JSON encoding (handles quotes, backslashes, control chars)
+# Persist title so the Stop hook can read it via session_id
+if [[ -n "$SESSION" ]]; then
+  mkdir -p "$(dirname "$TITLE_FILE")"
+  printf '%s' "$TITLE" > "$TITLE_FILE"
+fi
+
 jq -n --arg title "$TITLE" \
   '{hookSpecificOutput: {hookEventName: "UserPromptSubmit", sessionTitle: $title}}'
 

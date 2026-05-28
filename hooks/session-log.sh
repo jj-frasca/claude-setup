@@ -17,6 +17,11 @@ if [[ -z "$TRANSCRIPT" ]]; then exit 0; fi
 
 SESSION=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 TITLE=$(echo "$INPUT" | jq -r '.session_title // ""' 2>/dev/null)
+# Fallback: read from persisted title file written by session-title.sh
+if [[ -z "$TITLE" && -n "$SESSION" ]]; then
+  TITLE_FILE="$HOME/.claude/_session_logs/titles/${SESSION}.txt"
+  [[ -f "$TITLE_FILE" ]] && TITLE=$(cat "$TITLE_FILE" 2>/dev/null)
+fi
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 LOG_DIR="$HOME/.claude/_session_logs"
@@ -29,5 +34,8 @@ else
   printf '{"ts":"%s","session":"%s","transcript":"%s"}\n' \
     "$TIMESTAMP" "$SESSION" "$TRANSCRIPT" >> "$LOG_DIR/index.jsonl"
 fi
+
+# Clean up stale title files older than 7 days (best-effort)
+find "$LOG_DIR/titles" -name "*.txt" -mtime +7 -delete 2>/dev/null &
 
 exit 0
