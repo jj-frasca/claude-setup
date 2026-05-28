@@ -38,11 +38,6 @@ TRANSCRIPT_PATHS=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
   | sort -u \
   | while read -r p; do [ -f "$p" ] && echo "$p"; done || true)
 
-# Build a title map for the session index entries from today
-SESSION_TITLES=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
-  | jq -r 'select(.title != null and .title != "") | "\(.session[0:8]): \(.title)"' 2>/dev/null \
-  | head -20 | tr '\n' '|' || echo "")
-
 SESSION_COUNT=$(echo "$TRANSCRIPT_PATHS" | grep -c '.' 2>/dev/null || echo 0)
 
 if [[ "$SESSION_COUNT" -eq 0 ]]; then
@@ -51,47 +46,93 @@ if [[ "$SESSION_COUNT" -eq 0 ]]; then
   exit 0
 fi
 
-# ── pass 1: analysis ──────────────────────────────────────────────────────────
+# ── pre-extract signals from bash (avoids Claude reading large files) ──────────
 
-echo "[$JOB] Pass 1: analyzing $SESSION_COUNT session(s)..."
+# Extract key signals from each transcript via python3.
+# Keeps Claude's context small regardless of transcript file size.
+EXTRACTED=$(python3 - "$TRANSCRIPT_PATHS" <<'PYEOF'
+import sys, json, re
 
-TRANSCRIPT_LIST=$(echo "$TRANSCRIPT_PATHS" | head -20 | paste -sd ',' -)
+paths = sys.argv[1].strip().split('\n') if sys.argv[1].strip() else []
+correction_words = re.compile(r'\bno[,. ]|\bstop\b|\bwrong\b|\bnot that\b|\brevert\b|\bundo\b', re.I)
+
+for path in paths:
+    if not path.strip():
+        continue
+    sid = path.split('/')[-1][:8]
+    try:
+        sz = __import__('os').path.getsize(path)
+    except Exception:
+        sz = 0
+    print(f"--- Session {sid} ({sz}B) ---")
+    tool_errors, degraded, corrections = 0, 0, 0
+    tail_lines = []
+    try:
+        with open(path) as f:
+            for line in f:
+                if '"is_error":true' in line:
+                    tool_errors += 1
+                if '[DEGRADED]' in line:
+                    degraded += 1
+                try:
+                    d = json.loads(line)
+                    msg = d.get('message', {})
+                    role = msg.get('role', '')
+                    content = msg.get('content', '')
+                    if isinstance(content, list):
+                        text = ' '.join(c.get('text','') if isinstance(c,dict) else str(c) for c in content)
+                    else:
+                        text = str(content)
+                    if role == 'user' and correction_words.search(text):
+                        corrections += 1
+                    if role in ('user', 'assistant'):
+                        tail_lines.append(f"[{role}] {text[:120]}")
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"  (error reading: {e})")
+        continue
+    if tool_errors:
+        print(f"  Tool errors: {tool_errors}")
+    if degraded:
+        print(f"  DEGRADED flags: {degraded}")
+    if corrections:
+        print(f"  Possible user corrections: {corrections}")
+    print("  Last exchanges:")
+    for ln in tail_lines[-10:]:
+        print(f"    {ln}")
+PYEOF
+)
+
+# Build session titles map
+SESSION_TITLES=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
+  | jq -r 'select(.title != null and .title != "") | "\(.session[0:8]): \(.title)"' 2>/dev/null \
+  | head -10 | tr '\n' '|' || echo "")
+
 TOOL_FAILURES_LOG="$HOME/.claude/_session_logs/tool-failures.jsonl"
-
-# Gather supplemental context
-GIT_LOG_24H=$(cd "$CLAUDE_WORK" && git log --oneline --since="24 hours ago" 2>/dev/null | head -15 || echo "(no git log available)")
-LAST_CRON=$(tail -5 "$REPORTS_DIR/cron.log" 2>/dev/null | jq -r '"\(.ts[0:16]) \(.job): \(.status) (\(.detail))"' 2>/dev/null | tr '\n' '|' || echo "(none)")
 RECENT_TOOL_FAILURES=""
 if [[ -f "$TOOL_FAILURES_LOG" ]]; then
   RECENT_TOOL_FAILURES=$(tail -20 "$TOOL_FAILURES_LOG" | jq -r '"\(.ts[0:16]) \(.tool)|\(.target[0:60])|\(.error[0:80])"' 2>/dev/null | tr '\n' '§' || echo "")
 fi
+GIT_LOG_24H=$(cd "$CLAUDE_WORK" && git log --oneline --since="24 hours ago" 2>/dev/null | head -10 || echo "(none)")
+LAST_CRON=$(tail -5 "$REPORTS_DIR/cron.log" 2>/dev/null | jq -r '"\(.ts[0:16]) \(.job): \(.status) (\(.detail))"' 2>/dev/null | tr '\n' '|' || echo "(none)")
 
-ANALYSIS_PROMPT="You are analyzing Claude Code session transcripts to identify improvement opportunities.
+# ── pass 1: analysis ──────────────────────────────────────────────────────────
 
-Today is $TODAY. Analyze these transcript files (paths): $TRANSCRIPT_LIST
+echo "[$JOB] Pass 1: analyzing $SESSION_COUNT session(s)..."
 
-Supplemental context:
-- Session titles (session_id[0:8]: title): ${SESSION_TITLES:-(titles not yet captured)}
-- Recent commits (last 24h): $GIT_LOG_24H
-- Recent cron runs: $LAST_CRON
-- Recent tool failures (last 20, from PostToolUseFailure hook): ${RECENT_TOOL_FAILURES:-(none yet)}
+ANALYSIS_PROMPT="You are analyzing Claude Code session data to identify improvement opportunities.
 
-For each transcript file, use efficient scanning:
-- For large files (>500KB): use Bash grep to scan for patterns rather than reading line-by-line
-  e.g. grep -i "error\|failed\|wrong\|degraded\|rate.limit\|retry" <path> | tail -50
-- For small files: use Read tool to read the full content
+Today is $TODAY. Session count: $SESSION_COUNT.
+Session titles: ${SESSION_TITLES:-(none captured yet)}
+Recent commits (24h): $GIT_LOG_24H
+Recent cron runs: $LAST_CRON
+Recent tool failures (PostToolUseFailure hook): ${RECENT_TOOL_FAILURES:-(none)}
 
-Scan for:
-1. Tool errors — any tool that returned an error, especially if retried multiple times
-2. User corrections — messages containing words like 'no', 'stop', 'undo', 'revert', 'wrong', 'not that', 'actually'
-3. Retry storms — same tool called 3+ times in a row with similar inputs
-4. [DEGRADED] flags — any text matching '[DEGRADED]' in assistant messages
-5. Incomplete tasks — conversation ends without a clear resolution
-6. Recurring patterns — same area fixed multiple times in recent commits signals a systemic issue
+Pre-extracted session data (grep + last 30 lines per session):
+$EXTRACTED
 
-Also consider:
-- If the user demonstrated a clear preference or gave feedback → suggest auto-saving it as a memory entry
-- If a cron script failed or had a near-miss → suggest a bug fix
+Identify issues from the data above. Do NOT read any additional files.
 
 Return ONLY valid JSON:
 {
@@ -100,34 +141,28 @@ Return ONLY valid JSON:
   \"fixes\": [
     {
       \"type\": \"tool_error|user_correction|retry_storm|degraded_skill|incomplete_task\",
-      \"description\": \"brief description of the issue\",
+      \"description\": \"brief description\",
       \"severity\": 1,
       \"suggested_fix\": \"concrete actionable fix\",
-      \"auto_applicable\": true,
-      \"session_id\": \"session id if identifiable\"
+      \"auto_applicable\": false,
+      \"session_id\": \"8-char session id if identifiable\"
     }
   ]
 }
 
-For each fix, set auto_applicable=true only if the fix is:
-- A memory file update (adding a feedback/user/project memory entry)
-- A bug fix in a cron script or hook script
-- A .gitignore addition
-
-Set auto_applicable=false for anything touching CLAUDE.md, settings.json, launchd plists,
-architectural decisions, or anything requiring destructive operations.
-
+auto_applicable=true ONLY for: memory file updates, cron/hook script bug fixes, .gitignore additions.
+auto_applicable=false for: CLAUDE.md, settings.json, launchd plists, architectural decisions.
 Severity: 5=critical, 4=significant, 3=notable, 2=minor, 1=informational.
 Sort by severity descending. Return ONLY the JSON."
 
 ANALYSIS_RESPONSE=$(run_claude "$REPORTS_DIR/cron-selfheal-err.log" \
   "$ANALYSIS_PROMPT" \
   --model claude-sonnet-4-6 \
-  --allowedTools "Read,Bash" \
+  --allowedTools "Bash" \
   --output-format json \
   --no-session-persistence \
-  --max-turns 20 \
-  --max-budget-usd 0.50 \
+  --max-turns 3 \
+  --max-budget-usd 0.30 \
   --debug-file "$REPORTS_DIR/cron-selfheal-debug.log") || {
     local_err=$(cat "$REPORTS_DIR/cron-selfheal-err.log" 2>/dev/null | head -5 | tr '\n' '|')
     notify_slack "❌ Self-Heal [$TODAY] FAILED (Pass 1): claude -p error. $local_err"
