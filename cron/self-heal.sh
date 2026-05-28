@@ -260,5 +260,5 @@ $APPLIED_LINES
 $FLAGGED_LINES"
 
 notify_slack "$SLACK_MSG"
-log_cron "$JOB" "ok" "issues=$ISSUE_COUNT applied=${APPLIED_COUNT:-0} cost=$COST_FMT"
+log_cron "$JOB" "ok" "issues=$ISSUE_COUNT auto=$AUTO_COUNT applied=${APPLIED_COUNT:-0} cost=$COST_FMT"
 echo "[$JOB] Complete."

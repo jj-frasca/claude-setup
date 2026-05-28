@@ -98,6 +98,9 @@ FILES=$(echo "$RESULT" | jq -r '.files_scanned // "?"' 2>/dev/null || echo "?")
 ELAPSED=$(( SECONDS - START_SECONDS ))
 echo "[$JOB] Done. $FILES file(s) scanned, $MERGES merge(s). Cost: \$$COST (${ELAPSED}s)"
 
+# Prune backups older than 7 days
+find "$REPORTS_DIR" -maxdepth 1 -name "memory-backup-*" -type d -mtime +7 -exec rm -rf {} + 2>/dev/null || true
+
 SLACK_MSG="🧠 Memory [$TODAY]: $FILES file(s) scanned, $MERGES merge(s). Cost: \$$COST · ${ELAPSED}s"
 notify_slack "$SLACK_MSG"
 log_cron "$JOB" "ok" "files=$FILES merges=$MERGES cost=$COST"

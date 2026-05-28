@@ -275,8 +275,7 @@ def cmd_sessions() -> str:
     index_path = os.path.join(HOME, ".claude/_session_logs/index.jsonl")
     if not os.path.exists(index_path):
         return "_(no session index yet)_"
-    seen_sessions: set = set()
-    sessions = []
+    session_data: dict = {}
     with open(index_path) as f:
         for raw in f:
             try:
@@ -284,13 +283,13 @@ def cmd_sessions() -> str:
                 if not e.get("ts", "").startswith(today):
                     continue
                 sid = e.get("session", "?")
-                if sid in seen_sessions:
-                    continue
-                seen_sessions.add(sid)
                 title = e.get("title", "")
-                sessions.append((sid[:8], title))
+                prev = session_data.get(sid)
+                if prev is None or (title and not prev[1]):
+                    session_data[sid] = (sid[:8], title)
             except Exception:
                 pass
+    sessions = list(session_data.values())
     if not sessions:
         return f"*Sessions {today}*: None recorded yet"
     lines = [f"*Sessions {today}*: {len(sessions)} session(s)"]
