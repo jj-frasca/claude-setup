@@ -22,7 +22,9 @@ fi
 
 TRANSCRIPT_PATHS=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
   | jq -r '.transcript // empty' 2>/dev/null \
-  | grep -v '^$' || true)
+  | grep -v '^$' \
+  | sort -u \
+  | while read -r p; do [ -f "$p" ] && echo "$p"; done || true)
 
 SESSION_COUNT=$(echo "$TRANSCRIPT_PATHS" | grep -c '.' 2>/dev/null || echo 0)
 
