@@ -103,7 +103,17 @@ ANALYSIS_RESPONSE=$(claude -p "$ANALYSIS_PROMPT" \
 
 add_cost "$(echo "$ANALYSIS_RESPONSE" | jq -r '.total_cost_usd // 0' 2>/dev/null || echo 0)"
 RAW=$(echo "$ANALYSIS_RESPONSE" | jq -r '.result' 2>/dev/null)
-RESULT=$(echo "$RAW" | sed 's/^```json//; s/^```//; s/```$//' | sed '/^$/d')
+RESULT=$(echo "$RAW" | python3 -c "
+import sys,json,re
+text=sys.stdin.read().strip()
+text=re.sub(r'\`\`\`(?:json)?\s*','',text).strip()
+try: print(json.dumps(json.loads(text))); sys.exit()
+except: pass
+m=re.search(r'\{[\s\S]*\}',text)
+if m:
+    try: print(json.dumps(json.loads(m.group()))); sys.exit()
+    except: pass
+" 2>/dev/null)
 
 if ! echo "$RESULT" | jq . >/dev/null 2>&1; then
   echo "$RAW" > "$REPORTS_DIR/$TODAY-selfheal-raw.txt"
@@ -171,7 +181,17 @@ After applying all fixes and committing, return ONLY this JSON:
   add_cost "$REMEDIATION_COST"
 
   RAW_REM=$(echo "$REMEDIATION_RESPONSE" | jq -r '.result' 2>/dev/null)
-  REM_RESULT=$(echo "$RAW_REM" | sed 's/^```json//; s/^```//; s/```$//' | sed '/^$/d')
+  REM_RESULT=$(echo "$RAW_REM" | python3 -c "
+import sys,json,re
+text=sys.stdin.read().strip()
+text=re.sub(r'\`\`\`(?:json)?\s*','',text).strip()
+try: print(json.dumps(json.loads(text))); sys.exit()
+except: pass
+m=re.search(r'\{[\s\S]*\}',text)
+if m:
+    try: print(json.dumps(json.loads(m.group()))); sys.exit()
+    except: pass
+" 2>/dev/null)
 
   if echo "$REM_RESULT" | jq . >/dev/null 2>&1; then
     echo "$REM_RESULT" > "$REMEDIATION_FILE"
