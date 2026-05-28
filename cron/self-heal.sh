@@ -104,6 +104,17 @@ TOP_SEVERITY=$(echo "$RESULT" | jq '[.fixes[].severity] | max // 0' 2>/dev/null 
 echo "[$JOB] Done. $ISSUE_COUNT issue(s) found. Cost: \$$COST"
 echo "[$JOB] Report: $REPORT_FILE"
 
-SLACK_MSG="🔧 Self-Heal [$TODAY]: $SESSION_COUNT session(s), $ISSUE_COUNT issue(s) found (max severity: $TOP_SEVERITY). Cost: \$$COST"
+# Build Slack message with top issues listed
+ISSUE_LINES=$(echo "$RESULT" | jq -r '
+  .fixes[:5][] |
+  "  • [" + (.severity|tostring) + "] " + .type + ": " + .description[:120]
+' 2>/dev/null || echo "  (could not parse issues)")
+
+STARTED_AT=$(date -u +"%H:%M UTC")
+SLACK_MSG="🔧 Self-Heal [$TODAY] — started ~5:00 PM, finished $STARTED_AT
+Sessions: $SESSION_COUNT | Issues: $ISSUE_COUNT (max severity: $TOP_SEVERITY) | Cost: \$$COST
+
+$ISSUE_LINES"
+
 notify_slack "$SLACK_MSG"
 log_cron "$JOB" "ok" "issues=$ISSUE_COUNT cost=$COST"
