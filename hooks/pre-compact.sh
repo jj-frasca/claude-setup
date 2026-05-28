@@ -17,7 +17,7 @@ Memory dir: ~/.claude/projects/-Users-joefrasca-claude-work/memory/
 MEMORY.md index must also be updated when adding a new file.
 Trigger: $TRIGGER"
 
-printf '{"hookSpecificOutput":{"hookEventName":"PreCompact","additionalContext":"%s"}}\n' \
-  "$(echo "$CONTEXT" | sed 's/"/\\"/g' | tr '\n' '|' | sed 's/|/\\n/g')"
+jq -n --arg ctx "$CONTEXT" \
+  '{hookSpecificOutput: {hookEventName: "PreCompact", additionalContext: $ctx}}'
 
 exit 0

@@ -72,7 +72,7 @@ LaunchAgents:
 Recent tool failures:
 $RECENT_TOOL_FAILS}"
 
-printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
-  "$(echo "$CONTEXT" | sed 's/"/\\"/g' | tr '\n' '|' | sed 's/|/\\n/g')"
+jq -n --arg ctx "$CONTEXT" \
+  '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}'
 
 exit 0
