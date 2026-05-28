@@ -268,6 +268,38 @@ def cmd_report() -> str:
     return "\n".join(lines)
 
 
+def cmd_sessions() -> str:
+    """Show today's session count and titles from session index."""
+    import datetime
+    today = datetime.date.today().isoformat()
+    index_path = os.path.join(HOME, ".claude/_session_logs/index.jsonl")
+    if not os.path.exists(index_path):
+        return "_(no session index yet)_"
+    seen_sessions: set = set()
+    sessions = []
+    with open(index_path) as f:
+        for raw in f:
+            try:
+                e = json.loads(raw.strip())
+                if not e.get("ts", "").startswith(today):
+                    continue
+                sid = e.get("session", "?")
+                if sid in seen_sessions:
+                    continue
+                seen_sessions.add(sid)
+                title = e.get("title", "")
+                sessions.append((sid[:8], title))
+            except Exception:
+                pass
+    if not sessions:
+        return f"*Sessions {today}*: None recorded yet"
+    lines = [f"*Sessions {today}*: {len(sessions)} session(s)"]
+    for sid, title in sessions[-10:]:
+        label = title[:60] if title else "_(no title)_"
+        lines.append(f"  `{sid}` {label}")
+    return "\n".join(lines)
+
+
 def cmd_heal(channel: str):
     """Trigger self-heal manually in background."""
     post_to_slack(channel, "🔧 Triggering self-heal... (check back in ~60s for results)")
@@ -303,6 +335,10 @@ def handle_message(text: str, channel: str):
         post_to_slack(channel, cmd_cost())
         return
 
+    if text_lower in ("/sessions", "sessions", "!sessions"):
+        post_to_slack(channel, cmd_sessions())
+        return
+
     if text_lower in ("/help", "help", "!help"):
         post_to_slack(channel, (
             "*Claude Slack Bot*\n"
@@ -311,6 +347,7 @@ def handle_message(text: str, channel: str):
             "`/memory` — show memory index entries\n"
             "`/heal` — manually trigger self-heal\n"
             "`/cost` — API cost breakdown (today + this week)\n"
+            "`/sessions` — today's session count and titles\n"
             "`/help` — show this message\n"
             "Anything else — forwarded to Claude Code (max $2)"
         ))
