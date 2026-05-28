@@ -107,14 +107,22 @@ echo "[$JOB] Report: $REPORT_FILE"
 # Build Slack message with top issues listed
 ISSUE_LINES=$(echo "$RESULT" | jq -r '
   .fixes[:5][] |
-  "  • [" + (.severity|tostring) + "] " + .type + ": " + .description[:120]
+  (if .severity >= 4 then "🔴"
+   elif .severity == 3 then "🟡"
+   else "🔵" end) as $icon |
+  (.type | gsub("_"; " ") | ascii_upcase) as $label |
+  (.description | if length > 140 then .[0:140] + "…" else . end) as $desc |
+  (.suggested_fix | if length > 120 then .[0:120] + "…" else . end) as $fix |
+  "\($icon) \($label)\n    \($desc)\n    → \($fix)"
 ' 2>/dev/null || echo "  (could not parse issues)")
 
-STARTED_AT=$(date -u +"%H:%M UTC")
-SLACK_MSG="🔧 Self-Heal [$TODAY] — started ~5:00 PM, finished $STARTED_AT
-Sessions: $SESSION_COUNT | Issues: $ISSUE_COUNT (max severity: $TOP_SEVERITY) | Cost: \$$COST
+FINISH_TIME=$(date "+%-I:%M %p")
+SLACK_MSG="🔧 *Self-Heal — $TODAY*
+$SESSION_COUNT session(s) analyzed · $ISSUE_COUNT issue(s) found · \$$COST
 
-$ISSUE_LINES"
+$ISSUE_LINES
+
+_Finished $FINISH_TIME · Full report: ~/.claude/_reports/$TODAY-selfheal.json_"
 
 notify_slack "$SLACK_MSG"
 log_cron "$JOB" "ok" "issues=$ISSUE_COUNT cost=$COST"
