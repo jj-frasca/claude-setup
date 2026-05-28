@@ -145,6 +145,33 @@ def cmd_memory() -> str:
     return "*Memory Index:*\n" + "\n".join(lines[:15])
 
 
+def cmd_report() -> str:
+    """Return the latest self-heal report findings."""
+    reports_dir = os.path.join(HOME, ".claude/_reports")
+    reports = sorted(f for f in os.listdir(reports_dir) if f.endswith("-selfheal.json"))
+    if not reports:
+        return "_(no self-heal reports found)_"
+    latest = os.path.join(reports_dir, reports[-1])
+    date_str = reports[-1].replace("-selfheal.json", "")
+    try:
+        with open(latest) as f:
+            data = json.load(f)
+    except Exception as e:
+        return f"_(error reading report: {e})_"
+    fixes = data.get("fixes", [])
+    if not fixes:
+        return f"*Self-Heal {date_str}*: No issues found ✅"
+    lines = [f"*Self-Heal {date_str}*: {len(fixes)} issue(s)"]
+    for fix in fixes[:8]:
+        sev = fix.get("severity", 0)
+        icon = "🔴" if sev >= 4 else "🟡" if sev == 3 else "🔵"
+        typ = fix.get("type", "?").replace("_", " ")
+        desc = fix.get("description", "")[:100]
+        auto = " ✅auto" if fix.get("auto_applicable") else ""
+        lines.append(f"{icon} [{typ}]{auto}: {desc}")
+    return "\n".join(lines)
+
+
 def cmd_heal(channel: str):
     """Trigger self-heal manually in background."""
     post_to_slack(channel, "🔧 Triggering self-heal... (check back in ~60s for results)")
@@ -172,10 +199,15 @@ def handle_message(text: str, channel: str):
         cmd_heal(channel)
         return
 
+    if text_lower in ("/report", "report", "!report"):
+        post_to_slack(channel, cmd_report())
+        return
+
     if text_lower in ("/help", "help", "!help"):
         post_to_slack(channel, (
             "*Claude Slack Bot*\n"
             "`/status` — cron history and launchd agent health\n"
+            "`/report` — latest self-heal findings\n"
             "`/memory` — show memory index entries\n"
             "`/heal` — manually trigger self-heal\n"
             "`/help` — show this message\n"
