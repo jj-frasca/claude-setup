@@ -12,5 +12,9 @@ settings.local.json
 # Daily automation reports and logs
 _reports/
 
+# Python
+__pycache__/
+*.pyc
+
 # macOS
 .DS_Store

@@ -122,6 +122,29 @@ def cmd_status() -> str:
     )
 
 
+def cmd_memory() -> str:
+    """Return recent memory index entries."""
+    memory_md = os.path.join(HOME, ".claude/projects/-Users-joefrasca-claude-work/memory/MEMORY.md")
+    if not os.path.exists(memory_md):
+        return "_(no memory index found)_"
+    with open(memory_md) as f:
+        lines = [l.rstrip() for l in f if l.strip() and not l.startswith("#")]
+    if not lines:
+        return "_(memory index is empty)_"
+    return "*Memory Index:*\n" + "\n".join(lines[:15])
+
+
+def cmd_heal(channel: str):
+    """Trigger self-heal manually in background."""
+    post_to_slack(channel, "🔧 Triggering self-heal... (check back in ~60s for results)")
+    script = os.path.join(HOME, "claude-work/.claude/cron/self-heal.sh")
+    subprocess.Popen(
+        ["/bin/bash", script],
+        stdout=open(os.path.join(HOME, ".claude/_reports/slack-triggered-selfheal.log"), "w"),
+        stderr=subprocess.STDOUT,
+    )
+
+
 def handle_message(text: str, channel: str):
     text_lower = text.lower().strip()
 
@@ -130,12 +153,22 @@ def handle_message(text: str, channel: str):
         post_to_slack(channel, cmd_status())
         return
 
+    if text_lower in ("/memory", "memory", "!memory"):
+        post_to_slack(channel, cmd_memory())
+        return
+
+    if text_lower in ("/heal", "heal", "!heal"):
+        cmd_heal(channel)
+        return
+
     if text_lower in ("/help", "help", "!help"):
         post_to_slack(channel, (
             "*Claude Slack Bot*\n"
-            "`/status` — show cron job history and launchd agent health\n"
+            "`/status` — cron history and launchd agent health\n"
+            "`/memory` — show memory index entries\n"
+            "`/heal` — manually trigger self-heal\n"
             "`/help` — show this message\n"
-            "Anything else — forwarded to Claude Code (max budget $2)"
+            "Anything else — forwarded to Claude Code (max $2)"
         ))
         return
 
