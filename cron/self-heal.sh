@@ -161,7 +161,7 @@ ABSOLUTE RULES — violating these is not allowed:
 - NEVER edit CLAUDE.md or settings.json or any launchd plist
 - NEVER delete files, branches, or git history
 - NEVER make a fix you are not confident about — skip it and mark it flagged
-- ALWAYS commit any changes you make with EXACTLY: cd ~/claude-work/.claude && git add cron/ hooks/ rules/ skills/ .gitignore && git commit -m 'self-heal: auto-apply fixes $TODAY' && git push origin master
+- After making changes, commit with: cd ~/claude-work/.claude && git add cron/ hooks/ rules/ skills/ .gitignore && git diff --cached --quiet || (git commit -m 'self-heal: auto-apply fixes $TODAY' && git push origin master)
 - NEVER use git add -A or git add . — only stage the specific directories listed above
 - When writing memory files, follow the existing format in ~/.claude/projects/-Users-joefrasca-claude-work/memory/ exactly
 

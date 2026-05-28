@@ -36,7 +36,7 @@ echo ""
 # Create directories
 mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/rules" \
          "$CLAUDE_DIR/skills/skill-builder" "$CLAUDE_DIR/skills/skill-auditor" \
-         "$CLAUDE_DIR/_session_logs"
+         "$CLAUDE_DIR/_session_logs" "$CLAUDE_DIR/_session_logs/titles"
 
 # Copy files
 cp "$REPO_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
@@ -127,7 +127,7 @@ echo ""
 echo "Daily automation installed. Three launchd jobs:"
 echo "  5:00 PM  — self-heal      (session failure analysis)"
 echo " 10:00 PM  — memory         (memory deduplication)"
-echo " 10:30 PM  — skills-track   (skill usage → preferred_skills.md)"
+echo " 11:00 PM  — skills-track   (skill usage → preferred_skills.md)"
 echo ""
 echo "REQUIRED one-time steps:"
 echo "  1. Run: bash $REPO_DIR/cron/setup-cron-auth.sh"
