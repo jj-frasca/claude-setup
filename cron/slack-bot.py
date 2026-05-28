@@ -85,7 +85,60 @@ def run_claude(prompt: str) -> str:
         return (result.stdout or result.stderr or "Error: no output from claude").strip()
 
 
+def cmd_status() -> str:
+    """Return a quick status of cron jobs and launchd agents."""
+    lines = []
+    cron_log = os.path.join(HOME, ".claude/_reports/cron.log")
+    if os.path.exists(cron_log):
+        with open(cron_log) as f:
+            entries = [l.strip() for l in f if l.strip()]
+        for raw in entries[-5:]:
+            try:
+                e = json.loads(raw)
+                ts = e.get("ts", "")[:16]
+                lines.append(f"  {ts} {e.get('job','?')}: {e.get('status','?')} ({e.get('detail','')})")
+            except Exception:
+                pass
+    else:
+        lines.append("  (no cron log yet)")
+
+    agents = {
+        "self-heal": "com.jjfrasca.selfheal",
+        "memory":    "com.jjfrasca.memory",
+        "skills":    "com.jjfrasca.skills",
+        "slack-bot": "com.jjfrasca.slackbot",
+        "cloudflared": "com.jjfrasca.cloudflared",
+    }
+    agent_lines = []
+    for name, label in agents.items():
+        r = subprocess.run(["launchctl", "list", label], capture_output=True, text=True)
+        running = "✅" if r.returncode == 0 else "❌"
+        agent_lines.append(f"{running} {name}")
+
+    return (
+        "*Claude Setup Status*\n"
+        "*Last 5 cron runs:*\n" + "\n".join(lines) + "\n\n"
+        "*LaunchAgents:* " + "  ".join(agent_lines)
+    )
+
+
 def handle_message(text: str, channel: str):
+    text_lower = text.lower().strip()
+
+    # Built-in command shortcuts
+    if text_lower in ("/status", "status", "!status"):
+        post_to_slack(channel, cmd_status())
+        return
+
+    if text_lower in ("/help", "help", "!help"):
+        post_to_slack(channel, (
+            "*Claude Slack Bot*\n"
+            "`/status` — show cron job history and launchd agent health\n"
+            "`/help` — show this message\n"
+            "Anything else — forwarded to Claude Code (max budget $2)"
+        ))
+        return
+
     try:
         response = run_claude(text)
         # Slack has a 4000-char message limit

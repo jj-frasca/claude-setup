@@ -71,7 +71,9 @@ RESPONSE=$(claude -p "$PROMPT" \
   --allowedTools "Read,Write,Edit,Bash" \
   --output-format json \
   --no-session-persistence \
+  --max-turns 25 \
   --max-budget-usd 1.00 \
+  --debug-file "$REPORTS_DIR/cron-memory-debug.log" \
   2>&1) || {
     echo "[$JOB] ERROR: claude -p failed. Backup preserved at $MEMORY_BACKUP_DIR"
     notify_slack "❌ Memory [$TODAY] FAILED: claude -p error. Backup at $MEMORY_BACKUP_DIR. See $REPORTS_DIR/cron-memory.log"

@@ -12,6 +12,7 @@ USAGE_LOG="$HOME/.claude/skills/_usage_log.jsonl"
 MANIFEST="$CLAUDE_WORK/skills/_manifest.json"
 PREFERRED_SKILLS_FILE="$CLAUDE_WORK/rules/preferred_skills.md"
 CUTOFF=$(date -v-30d +"%Y-%m-%d" 2>/dev/null || date -d "30 days ago" +"%Y-%m-%d" 2>/dev/null || echo "")
+# CUTOFF used in prompt as the 30-day lookback boundary
 
 echo "[$JOB] Starting — $TODAY"
 
@@ -24,7 +25,7 @@ fi
 
 PROMPT="You are analyzing Claude Code skill and tool usage to update the preferred skills reference file.
 
-Today is $TODAY. Analyze the 30-day period ending today.
+Today is $TODAY. Analyze the 30-day period from $CUTOFF to today.
 
 Data sources:
 - Usage log (last 30 days of tool calls): $USAGE_LOG
@@ -75,7 +76,9 @@ RESPONSE=$(claude -p "$PROMPT" \
   --allowedTools "Read,Write" \
   --output-format json \
   --no-session-persistence \
+  --max-turns 10 \
   --max-budget-usd 0.25 \
+  --debug-file "$REPORTS_DIR/cron-skills-debug.log" \
   2>&1) || {
     echo "[$JOB] ERROR: claude -p failed"
     notify_slack "❌ Skills [$TODAY] FAILED: claude -p error. See $REPORTS_DIR/cron-skills.log"

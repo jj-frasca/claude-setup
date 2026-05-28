@@ -12,6 +12,9 @@ STOP_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false')
 if [ "$STOP_ACTIVE" = "true" ]; then exit 0; fi
 
 TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // ""')
+# Skip cron / --no-session-persistence invocations that have no transcript
+if [[ -z "$TRANSCRIPT" ]]; then exit 0; fi
+
 SESSION=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 

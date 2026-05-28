@@ -46,7 +46,7 @@ cp "$REPO_DIR/skills/skill-builder/SKILL.md" "$CLAUDE_DIR/skills/skill-builder/S
 cp "$REPO_DIR/skills/skill-auditor/SKILL.md" "$CLAUDE_DIR/skills/skill-auditor/SKILL.md"
 
 # Copy and make hooks executable
-for hook in pre-tool-guard post-tool-logger notify session-log session-start pre-compact; do
+for hook in pre-tool-guard post-tool-logger notify session-log session-start pre-compact post-compact stop-failure; do
   cp "$REPO_DIR/hooks/$hook.sh" "$CLAUDE_DIR/hooks/$hook.sh"
   chmod +x "$CLAUDE_DIR/hooks/$hook.sh"
 done

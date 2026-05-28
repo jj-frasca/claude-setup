@@ -94,7 +94,9 @@ ANALYSIS_RESPONSE=$(claude -p "$ANALYSIS_PROMPT" \
   --allowedTools "Read,Bash" \
   --output-format json \
   --no-session-persistence \
+  --max-turns 20 \
   --max-budget-usd 0.50 \
+  --debug-file "$REPORTS_DIR/cron-selfheal-debug.log" \
   2>&1) || {
     notify_slack "❌ Self-Heal [$TODAY] FAILED (Pass 1): claude -p error."
     log_cron "$JOB" "error" "pass1 failed"
@@ -171,7 +173,9 @@ After applying all fixes and committing, return ONLY this JSON:
     --allowedTools "Read,Write,Edit,Bash" \
     --output-format json \
     --no-session-persistence \
+    --max-turns 30 \
     --max-budget-usd 1.50 \
+    --debug-file "$REPORTS_DIR/cron-selfheal-remediation-debug.log" \
     2>&1) || {
       echo "[$JOB] WARNING: Pass 2 claude -p failed — skipping remediation."
       APPLIED_LINES="  ⚠️ Remediation failed — claude -p error in Pass 2"

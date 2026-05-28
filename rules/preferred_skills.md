@@ -2,25 +2,25 @@
 _Auto-updated 2026-05-27 by skills-track.sh_
 
 ## Most-Used Tools (Last 30 Days)
-- Write: 26 uses
-- Edit: 11 uses
-(Only 2 tools logged; log started 2026-05-27)
+- Write: 106 uses
+- Edit: 60 uses
+- (Only 2 tools logged; log started 2026-05-27)
 
 ## Top File Types Touched
-- .sh: 10 edits
-- .md: 7 edits
-- .json: 8 edits
-- .plist: 6 edits
-- .gitignore: 3 edits
+- .sh: 36 edits
+- .md: 32 edits
+- .py: 30 edits
+- .json: 14 edits
+- .plist: 9 edits
 
 ## Proactively Suggest
 - skill-builder: user describes a recurring pain point → propose a new skill
 - skill-auditor: after 10+ new log entries or weekly → audit manifest and usage
 
 ## Watch List (Inactive >14 Days)
-No skills currently inactive — manifest only contains recently created skills.
+No skills inactive — both skills created 2026-05-27, within 14-day window.
 
 ## Notes
-- Usage log is new (started 2026-05-27); patterns will be meaningful after ~1 week of data.
-- Heavy shell + config file activity suggests infra/setup work is the dominant use case.
-- No core-tier skills yet; promote skill-builder or skill-auditor after consistent use.
+- Log started 2026-05-27; 166 entries across 2 sessions (4ee51167, 2f217f2e).
+- Heavy .sh + .py split maps to two workstreams: infra/cron setup and quantforge backend.
+- Promote skill-builder/skill-auditor to 'core' after 5+ confirmed successful uses each.
