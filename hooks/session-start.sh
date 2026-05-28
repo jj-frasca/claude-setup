@@ -45,8 +45,17 @@ if [[ -f "$CRON_LOG" ]]; then
     ts=$(echo "$line" | jq -r '.ts // ""' 2>/dev/null | cut -c1-16)
     echo "  $ts $job: $status ($detail)"
   done)
-  # Last stop-failure event (if any in last 24h)
-  RECENT_FAIL=$(grep '"job":"stop-failure"' "$CRON_LOG" 2>/dev/null | tail -1)
+  # Last stop-failure with a known reason in the last 2 hours
+  CUTOFF_TS=$(date -u -v-2H +"%Y-%m-%dT%H:%M" 2>/dev/null || date -u -d "2 hours ago" +"%Y-%m-%dT%H:%M" 2>/dev/null || echo "")
+  RECENT_FAIL=""
+  if [[ -n "$CUTOFF_TS" ]]; then
+    RECENT_FAIL=$(grep '"job":"stop-failure"' "$CRON_LOG" 2>/dev/null \
+      | grep -v 'reason=unknown' \
+      | while IFS= read -r line; do
+          ts=$(echo "$line" | jq -r '.ts // ""' 2>/dev/null | cut -c1-16)
+          [[ "$ts" > "$CUTOFF_TS" ]] && echo "$line"
+        done | tail -1)
+  fi
   if [[ -n "$RECENT_FAIL" ]]; then
     fail_ts=$(echo "$RECENT_FAIL" | jq -r '.ts // ""' 2>/dev/null | cut -c1-16)
     fail_detail=$(echo "$RECENT_FAIL" | jq -r '.detail // ""' 2>/dev/null)
