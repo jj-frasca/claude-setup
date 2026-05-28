@@ -25,12 +25,11 @@ fi
 
 echo "[$JOB] Found $FILE_COUNT memory file(s). Backing up..."
 mkdir -p "$MEMORY_BACKUP_DIR"
-find "$HOME/.claude/projects" -path "*/memory/*.md" -exec cp --parents {} "$MEMORY_BACKUP_DIR/" \; 2>/dev/null || \
-  find "$HOME/.claude/projects" -path "*/memory/*.md" | while read -r f; do
-    dest="$MEMORY_BACKUP_DIR/${f#/}"
-    mkdir -p "$(dirname "$dest")"
-    cp "$f" "$dest"
-  done
+find "$HOME/.claude/projects" -path "*/memory/*.md" | while IFS= read -r f; do
+  dest="$MEMORY_BACKUP_DIR/${f#/}"
+  mkdir -p "$(dirname "$dest")"
+  cp "$f" "$dest"
+done
 echo "[$JOB] Backup created: $MEMORY_BACKUP_DIR"
 
 MEMORY_PATH_LIST=$(echo "$MEMORY_FILES" | paste -sd ',' -)
