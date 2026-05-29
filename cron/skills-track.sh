@@ -48,7 +48,8 @@ Your task:
 3. From the manifest, check which skills are 'active' vs 'inactive' and their last-used patterns
 4. Identify skills going inactive (not used in 14+ days based on usage log)
 
-Then write a new file at: $PREFERRED_SKILLS_FILE
+Then update the file at: $PREFERRED_SKILLS_FILE
+First read it with the Read tool (it may already exist), then overwrite it with Write.
 
 The file MUST be ≤45 lines and follow this EXACT format (replace [] placeholders with real data):
 # Preferred Skills & Tool Patterns
@@ -93,7 +94,7 @@ RESPONSE=$(run_claude "$REPORTS_DIR/cron-skills-err.log" \
   --output-format json \
   --no-session-persistence \
   --max-turns 10 \
-  --max-budget-usd 0.25 \
+  --max-budget-usd 0.50 \
   --debug-file "$REPORTS_DIR/cron-skills-debug.log") || {
     local_err=$(cat "$REPORTS_DIR/cron-skills-err.log" 2>/dev/null | head -10 | tr '\n' '|')
     echo "[$JOB] ERROR: claude -p failed. stderr: ${local_err:-(empty)}"
