@@ -14,6 +14,11 @@ REPORT_FILE="$REPORTS_DIR/$TODAY-selfheal.json"
 REMEDIATION_FILE="$REPORTS_DIR/$TODAY-selfheal-remediation.json"
 TOTAL_COST=0
 
+# ── lock guard ───────────────────────────────────────────────────────────────
+[ -f /tmp/self-heal.lock ] && { echo "[$JOB] Already running — exiting."; exit 0; }
+touch /tmp/self-heal.lock
+trap 'rm -f /tmp/self-heal.lock' EXIT
+
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 add_cost() {

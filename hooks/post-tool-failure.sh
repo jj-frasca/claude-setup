@@ -11,8 +11,7 @@ ERROR=$(echo "$INPUT" | jq -r '.tool_response.error // ""' | head -c 200)
 SESSION=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# Skip Bash commands that failed with no error message (expected non-zero exits)
-if [[ "$TOOL" == "Bash" && -z "$ERROR" ]]; then exit 0; fi
+[[ -z "$ERROR" ]] && exit 0
 
 LOG_FILE="$HOME/.claude/_session_logs/tool-failures.jsonl"
 mkdir -p "$(dirname "$LOG_FILE")"

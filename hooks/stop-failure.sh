@@ -12,19 +12,13 @@ TIMESTAMP=$(date "+%Y-%m-%d %I:%M %p")
 REPORTS_DIR="$HOME/.claude/_reports"
 mkdir -p "$REPORTS_DIR"
 
-# Log to cron.log always
+# Normal terminations — not failures, skip entirely
+[[ "$REASON" == "unknown" ]] && exit 0
+
+# Log to cron.log
 printf '{"ts":"%s","job":"stop-failure","status":"error","detail":"reason=%s session=%s"}\n' \
   "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$REASON" "$SESSION" \
   >> "$REPORTS_DIR/cron.log"
-
-# Don't send Slack for unknown edge cases; log payload for future diagnosis
-if [[ "$REASON" == "unknown" ]]; then
-  printf '{"ts":"%s","job":"stop-failure","note":"unknown-payload","raw":"%s"}\n' \
-    "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-    "$(echo "$INPUT" | head -c 200 | tr '\n' ' ' | sed 's/"/\\"/g')" \
-    >> "$REPORTS_DIR/cron.log"
-  exit 0
-fi
 
 SLACK_WEBHOOK_FILE="$HOME/.claude/.slack_webhook"
 if [[ ! -f "$SLACK_WEBHOOK_FILE" ]]; then exit 0; fi
