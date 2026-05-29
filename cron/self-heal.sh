@@ -46,63 +46,42 @@ if [[ "$SESSION_COUNT" -eq 0 ]]; then
   exit 0
 fi
 
-# ── pre-extract signals from bash (avoids Claude reading large files) ──────────
+# ── pre-extract today's messages from each transcript ─────────────────────────
+# Sessions can span multiple days. Grep for today's timestamp prefix (UTC) so
+# Claude only sees messages that happened today, regardless of transcript size.
+# TODAY is local date; at run time (5PM PDT = midnight UTC) local and UTC dates match.
+TODAY_UTC="$TODAY"
+TODAY_UTC_NEXT=$(date -u -v+1d +"%Y-%m-%d" 2>/dev/null || date -u -d "tomorrow" +"%Y-%m-%d" 2>/dev/null || echo "")
 
-# Extract key signals from each transcript via python3.
-# Keeps Claude's context small regardless of transcript file size.
-EXTRACTED=$(python3 - "$TRANSCRIPT_PATHS" <<'PYEOF'
-import sys, json, re
-
-paths = sys.argv[1].strip().split('\n') if sys.argv[1].strip() else []
-correction_words = re.compile(r'\bno[,. ]|\bstop\b|\bwrong\b|\bnot that\b|\brevert\b|\bundo\b', re.I)
-
-for path in paths:
-    if not path.strip():
-        continue
-    sid = path.split('/')[-1][:8]
+SESSION_EXTRACTS=""
+while IFS= read -r p; do
+  [[ -z "$p" ]] && continue
+  sid=$(basename "$p" .jsonl | head -c 8)
+  # Grep lines with today's UTC date in the timestamp field
+  # Use both today and tomorrow UTC to cover sessions around midnight
+  today_lines=$(grep -E "\"timestamp\":\"(${TODAY_UTC}|${TODAY_UTC_NEXT})" "$p" 2>/dev/null | tail -500)
+  msg_count=$(echo "$today_lines" | grep -c '"type":"user"\|"type":"assistant"' 2>/dev/null || echo 0)
+  formatted=$(echo "$today_lines" | python3 -c "
+import sys, json
+for line in sys.stdin:
     try:
-        sz = __import__('os').path.getsize(path)
-    except Exception:
-        sz = 0
-    print(f"--- Session {sid} ({sz}B) ---")
-    tool_errors, degraded, corrections = 0, 0, 0
-    tail_lines = []
-    try:
-        with open(path) as f:
-            for line in f:
-                if '"is_error":true' in line:
-                    tool_errors += 1
-                if '[DEGRADED]' in line:
-                    degraded += 1
-                try:
-                    d = json.loads(line)
-                    msg = d.get('message', {})
-                    role = msg.get('role', '')
-                    content = msg.get('content', '')
-                    if isinstance(content, list):
-                        text = ' '.join(c.get('text','') if isinstance(c,dict) else str(c) for c in content)
-                    else:
-                        text = str(content)
-                    if role == 'user' and correction_words.search(text):
-                        corrections += 1
-                    if role in ('user', 'assistant'):
-                        tail_lines.append(f"[{role}] {text[:120]}")
-                except Exception:
-                    pass
-    except Exception as e:
-        print(f"  (error reading: {e})")
-        continue
-    if tool_errors:
-        print(f"  Tool errors: {tool_errors}")
-    if degraded:
-        print(f"  DEGRADED flags: {degraded}")
-    if corrections:
-        print(f"  Possible user corrections: {corrections}")
-    print("  Last exchanges:")
-    for ln in tail_lines[-10:]:
-        print(f"    {ln}")
-PYEOF
-)
+        d = json.loads(line)
+        t = d.get('type','')
+        if t not in ('user','assistant'):
+            continue
+        msg = d.get('message', {})
+        role = msg.get('role', t)
+        c = msg.get('content','')
+        text = c if isinstance(c,str) else ' '.join(x.get('text','') if isinstance(x,dict) else '' for x in c)
+        ts = d.get('timestamp','')[:16]
+        print(f'[{ts}][{role}] {text[:200]}')
+    except:
+        pass
+" 2>/dev/null | head -150)
+  SESSION_EXTRACTS="${SESSION_EXTRACTS}
+=== Session ${sid}: ${msg_count} message(s) today ===
+${formatted:-(no messages matching today)}"
+done <<< "$TRANSCRIPT_PATHS"
 
 # Build session titles map
 SESSION_TITLES=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
@@ -121,7 +100,7 @@ LAST_CRON=$(tail -5 "$REPORTS_DIR/cron.log" 2>/dev/null | jq -r '"\(.ts[0:16]) \
 
 echo "[$JOB] Pass 1: analyzing $SESSION_COUNT session(s)..."
 
-ANALYSIS_PROMPT="You are analyzing Claude Code session data to identify improvement opportunities.
+ANALYSIS_PROMPT="You are analyzing Claude Code session transcripts to identify improvement opportunities.
 
 Today is $TODAY. Session count: $SESSION_COUNT.
 Session titles: ${SESSION_TITLES:-(none captured yet)}
@@ -129,10 +108,16 @@ Recent commits (24h): $GIT_LOG_24H
 Recent cron runs: $LAST_CRON
 Recent tool failures (PostToolUseFailure hook): ${RECENT_TOOL_FAILURES:-(none)}
 
-Pre-extracted session data (grep + last 30 lines per session):
-$EXTRACTED
+Today's messages from each session (pre-filtered by timestamp):
+$SESSION_EXTRACTS
 
-Identify issues from the data above. Do NOT read any additional files.
+Scan for:
+1. Tool errors — any tool that returned an error, especially if retried
+2. User corrections — messages like 'no', 'stop', 'wrong', 'not that', 'revert', 'undo'
+3. [DEGRADED] flags — text matching '[DEGRADED]' in assistant messages
+4. Incomplete tasks — conversation ends without resolution
+5. User preferences or feedback worth saving as a memory entry
+6. Cron/hook script bugs if the cron run data shows failures
 
 Return ONLY valid JSON:
 {
