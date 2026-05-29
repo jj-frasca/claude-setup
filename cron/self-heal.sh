@@ -63,6 +63,7 @@ while IFS= read -r p; do
   msg_count=$(echo "$today_lines" | grep -c '"type":"user"\|"type":"assistant"' 2>/dev/null || echo 0)
   formatted=$(echo "$today_lines" | python3 -c "
 import sys, json
+COMPACTION_PREFIX = 'This session is being continued from a previous conversation'
 for line in sys.stdin:
     try:
         d = json.loads(line)
@@ -72,7 +73,17 @@ for line in sys.stdin:
         msg = d.get('message', {})
         role = msg.get('role', t)
         c = msg.get('content','')
-        text = c if isinstance(c,str) else ' '.join(x.get('text','') if isinstance(x,dict) else '' for x in c)
+        # Extract only text blocks, skip tool_use/tool_result blocks
+        if isinstance(c, list):
+            text = ' '.join(
+                x.get('text','') for x in c
+                if isinstance(x, dict) and x.get('type') == 'text'
+            )
+        else:
+            text = str(c)
+        # Skip compaction summary injections (not real user messages)
+        if text.startswith(COMPACTION_PREFIX):
+            continue
         ts = d.get('timestamp','')[:16]
         print(f'[{ts}][{role}] {text[:200]}')
     except:
