@@ -3,7 +3,9 @@
 # async: true so it never blocks the session.
 
 INPUT=$(cat)
-TOOL=$(echo "$INPUT" | jq -r '.tool_name // "unknown"')
+if [[ -z "$INPUT" ]]; then exit 0; fi
+TOOL=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null)
+if [[ -z "$TOOL" || "$TOOL" == "null" ]]; then exit 0; fi
 FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.command // ""' | head -c 120)
 ERROR=$(echo "$INPUT" | jq -r '.tool_response.error // ""' | head -c 200)
 SESSION=$(echo "$INPUT" | jq -r '.session_id // "unknown"')

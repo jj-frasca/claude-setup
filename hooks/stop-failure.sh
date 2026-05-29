@@ -4,8 +4,9 @@
 # Posts to Slack so errors surface without tailing logs.
 
 INPUT=$(cat)
-REASON=$(echo "$INPUT" | jq -r '.stop_reason // "unknown"' 2>/dev/null)
-SESSION=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null | head -c 8)
+# Try camelCase and alternate field names across Claude Code versions
+REASON=$(echo "$INPUT" | jq -r '.stop_reason // .stopReason // .reason // .error // "unknown"' 2>/dev/null)
+SESSION=$(echo "$INPUT" | jq -r '.session_id // .sessionId // "unknown"' 2>/dev/null | head -c 8)
 TIMESTAMP=$(date "+%Y-%m-%d %I:%M %p")
 
 REPORTS_DIR="$HOME/.claude/_reports"
@@ -16,8 +17,14 @@ printf '{"ts":"%s","job":"stop-failure","status":"error","detail":"reason=%s ses
   "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$REASON" "$SESSION" \
   >> "$REPORTS_DIR/cron.log"
 
-# Don't send Slack for unknown edge cases
-if [[ "$REASON" == "unknown" ]]; then exit 0; fi
+# Don't send Slack for unknown edge cases; log payload for future diagnosis
+if [[ "$REASON" == "unknown" ]]; then
+  printf '{"ts":"%s","job":"stop-failure","note":"unknown-payload","raw":"%s"}\n' \
+    "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    "$(echo "$INPUT" | head -c 200 | tr '\n' ' ' | sed 's/"/\\"/g')" \
+    >> "$REPORTS_DIR/cron.log"
+  exit 0
+fi
 
 SLACK_WEBHOOK_FILE="$HOME/.claude/.slack_webhook"
 if [[ ! -f "$SLACK_WEBHOOK_FILE" ]]; then exit 0; fi

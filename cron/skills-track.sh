@@ -17,6 +17,16 @@ CUTOFF=$(date -v-30d +"%Y-%m-%d" 2>/dev/null || date -d "30 days ago" +"%Y-%m-%d
 START_SECONDS=$SECONDS
 echo "[$JOB] Starting — $TODAY"
 
+# Verify claude CLI is accessible before proceeding
+if ! command -v claude &>/dev/null; then
+  echo "[$JOB] ERROR: claude not found on PATH ($PATH)"
+  log_cron "$JOB" "error" "claude not on PATH"
+  notify_slack "❌ Skills [$TODAY] FAILED: claude not found on PATH"
+  exit 1
+fi
+CLAUDE_VER=$(claude --version 2>&1 | head -1 || echo "unknown")
+echo "[$JOB] Claude: $CLAUDE_VER"
+
 if [[ ! -f "$USAGE_LOG" ]] && [[ ! -f "$MANIFEST" ]]; then
   echo "[$JOB] No usage log or manifest found. Skipping."
   notify_slack "🛠 Skills [$TODAY]: No usage data yet. Skipped."
@@ -85,10 +95,11 @@ RESPONSE=$(run_claude "$REPORTS_DIR/cron-skills-err.log" \
   --max-turns 10 \
   --max-budget-usd 0.25 \
   --debug-file "$REPORTS_DIR/cron-skills-debug.log") || {
-    local_err=$(cat "$REPORTS_DIR/cron-skills-err.log" 2>/dev/null | head -5 | tr '\n' '|')
-    echo "[$JOB] ERROR: claude -p failed. $local_err"
-    notify_slack "❌ Skills [$TODAY] FAILED: claude -p error. $local_err"
-    log_cron "$JOB" "error" "claude -p failed"
+    local_err=$(cat "$REPORTS_DIR/cron-skills-err.log" 2>/dev/null | head -10 | tr '\n' '|')
+    echo "[$JOB] ERROR: claude -p failed. stderr: ${local_err:-(empty)}"
+    printf '%s\n' "--- skills-track stderr ($(date -u +"%Y-%m-%dT%H:%M:%SZ")) ---" >> "$REPORTS_DIR/cron-skills-err.log"
+    notify_slack "❌ Skills [$TODAY] FAILED: claude -p error. ${local_err:-(no stderr captured)}"
+    log_cron "$JOB" "error" "claude -p failed: ${local_err:0:120}"
     exit 1
   }
 
