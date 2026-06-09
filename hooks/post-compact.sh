@@ -32,7 +32,6 @@ $TOP_ISSUES"
 fi
 
 # Use jq --arg for correct JSON encoding of any special characters
-jq -n --arg ctx "$CONTEXT" \
-  '{hookSpecificOutput: {hookEventName: "PostCompact", additionalContext: $ctx}}'
+jq -n --arg ctx "$CONTEXT" '{systemMessage: $ctx}'
 
 exit 0

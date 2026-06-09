@@ -6,6 +6,15 @@ export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/us
 CLAUDE_TOKEN_FILE="$HOME/.claude/.claude_token"
 SLACK_WEBHOOK_FILE="$HOME/.claude/.slack_webhook"
 
+# Auto-refresh token from Keychain before checking the file.
+# Fails silently — if Keychain extraction doesn't work we fall through to the file.
+if _FRESH=$(security find-generic-password -s "Claude Code-credentials" -a "$(whoami)" -w 2>/dev/null) \
+    && [[ -n "$_FRESH" ]]; then
+  printf '%s' "$_FRESH" > "$CLAUDE_TOKEN_FILE"
+  chmod 600 "$CLAUDE_TOKEN_FILE"
+fi
+unset _FRESH
+
 if [[ ! -f "$CLAUDE_TOKEN_FILE" ]]; then
   echo "[cron-env] ERROR: $CLAUDE_TOKEN_FILE not found. Run cron/setup-cron-auth.sh first." >&2
   exit 1

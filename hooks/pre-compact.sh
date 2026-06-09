@@ -17,7 +17,6 @@ Memory dir: ~/.claude/projects/-Users-joefrasca-claude-work/memory/
 MEMORY.md index must also be updated when adding a new file.
 Trigger: $TRIGGER"
 
-jq -n --arg ctx "$CONTEXT" \
-  '{hookSpecificOutput: {hookEventName: "PreCompact", additionalContext: $ctx}}'
+jq -n --arg ctx "$CONTEXT" '{systemMessage: $ctx}'
 
 exit 0
