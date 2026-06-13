@@ -80,7 +80,7 @@ RESPONSE=$(run_claude "$REPORTS_DIR/cron-memory-err.log" \
     local_err=$(cat "$REPORTS_DIR/cron-memory-err.log" 2>/dev/null | head -5 | tr '\n' '|')
     echo "[$JOB] ERROR: claude -p failed. Backup preserved at $MEMORY_BACKUP_DIR"
     notify_slack "❌ Memory [$TODAY] FAILED: claude -p error. $local_err Backup at $MEMORY_BACKUP_DIR."
-    log_cron "$JOB" "error" "claude -p failed"
+    log_cron "$JOB" "error" "claude -p failed: ${local_err:0:120}"
     exit 1
   }
 

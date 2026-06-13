@@ -103,16 +103,27 @@ sys.exit(1)
 # Prints JSON response on success. Logs stderr to error-log-path on failure.
 run_claude() {
   local err_log="$1"; shift
-  local response stderr_content
+  local response stderr_content exit_code
   local attempt=0
 
   while [[ $attempt -lt 2 ]]; do
     stderr_content=""
-    if response=$(claude -p "$@" 2>"$err_log"); then
+    response=$(claude -p "$@" 2>"$err_log")
+    exit_code=$?
+    if [[ $exit_code -eq 0 ]]; then
       echo "$response"
       return 0
     fi
     stderr_content=$(cat "$err_log" 2>/dev/null || true)
+    if [[ -z "$stderr_content" ]]; then
+      {
+        echo "[cron-env] claude -p exited with status $exit_code, no stderr captured."
+        if [[ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
+          echo "[cron-env] CLAUDE_CODE_OAUTH_TOKEN is empty."
+        fi
+      } >> "$err_log"
+      stderr_content=$(cat "$err_log" 2>/dev/null || true)
+    fi
     attempt=$((attempt + 1))
     if echo "$stderr_content" | grep -qi "rate.limit\|429\|too.many.request"; then
       echo "[cron-env] Rate limit — sleeping 90s before retry ($attempt/2)..." >&2

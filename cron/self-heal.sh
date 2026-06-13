@@ -167,7 +167,7 @@ ANALYSIS_RESPONSE=$(run_claude "$REPORTS_DIR/cron-selfheal-err.log" \
   --debug-file "$REPORTS_DIR/cron-selfheal-debug.log") || {
     local_err=$(cat "$REPORTS_DIR/cron-selfheal-err.log" 2>/dev/null | head -5 | tr '\n' '|')
     notify_slack "❌ Self-Heal [$TODAY] FAILED (Pass 1): claude -p error. $local_err"
-    log_cron "$JOB" "error" "pass1 failed"
+    log_cron "$JOB" "error" "pass1 failed: ${local_err:0:120}"
     exit 1
   }
 
