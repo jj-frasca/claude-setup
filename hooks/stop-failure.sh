@@ -31,7 +31,7 @@ case "$REASON" in
     ;;
   authentication_failed)
     ICON="🔑"
-    MSG="Auth failed — session $SESSION at $TIMESTAMP. Run cron/setup-cron-auth.sh to refresh token."
+    MSG="Auth failed — session $SESSION at $TIMESTAMP. Open Claude Code to auto-refresh, or run: security find-generic-password -s 'Claude Code-credentials' -a \$(whoami) -w > ~/.claude/.claude_token"
     ;;
   *)
     ICON="⚠️"

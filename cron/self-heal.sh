@@ -43,7 +43,7 @@ TRANSCRIPT_PATHS=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
   | sort -u \
   | while read -r p; do [ -f "$p" ] && echo "$p"; done || true)
 
-SESSION_COUNT=$(echo "$TRANSCRIPT_PATHS" | grep -c '.' 2>/dev/null || echo 0)
+SESSION_COUNT=$(echo "$TRANSCRIPT_PATHS" | grep -c '.' 2>/dev/null || true)
 
 if [[ "$SESSION_COUNT" -eq 0 ]]; then
   notify_slack "🔧 Self-Heal [$TODAY]: No sessions today. Skipped."
@@ -65,7 +65,7 @@ while IFS= read -r p; do
   # Grep lines with today's UTC date in the timestamp field
   # Use both today and tomorrow UTC to cover sessions around midnight
   today_lines=$(grep -E "\"timestamp\":\"(${TODAY_UTC}|${TODAY_UTC_NEXT})" "$p" 2>/dev/null | tail -500)
-  msg_count=$(echo "$today_lines" | grep -c '"type":"user"\|"type":"assistant"' 2>/dev/null || echo 0)
+  msg_count=$(echo "$today_lines" | grep -c '"type":"user"\|"type":"assistant"' 2>/dev/null || true)
   formatted=$(echo "$today_lines" | python3 -c "
 import sys, json
 COMPACTION_PREFIX = 'This session is being continued from a previous conversation'
