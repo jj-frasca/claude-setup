@@ -120,6 +120,16 @@ run_claude() {
         echo "[cron-env] claude -p exited with status $exit_code, no stderr captured."
         if [[ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
           echo "[cron-env] CLAUDE_CODE_OAUTH_TOKEN is empty."
+        else
+          echo "[cron-env] CLAUDE_CODE_OAUTH_TOKEN length: ${#CLAUDE_CODE_OAUTH_TOKEN}"
+        fi
+        echo "[cron-env] claude binary: $(command -v claude 2>&1)"
+        echo "[cron-env] claude --version: $(claude --version 2>&1)"
+        if [[ -n "$response" ]]; then
+          echo "[cron-env] stdout from claude -p:"
+          printf '%s\n' "$response"
+        else
+          echo "[cron-env] stdout from claude -p was empty."
         fi
       } >> "$err_log"
       stderr_content=$(cat "$err_log" 2>/dev/null || true)
