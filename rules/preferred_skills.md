@@ -1,5 +1,6 @@
 # Preferred Skills & Tool Patterns
-_Auto-updated 2026-06-13 by skills-track.sh_
+_Auto-updated 2026-06-17 by skills-track.sh_
+_Note: skills-track runs have been intermittently failing due to OAuth token expiry; data below may be stale (last successful run: 2026-06-13)._
 
 ## Most-Used Tools (Last 30 Days)
 - Edit: 622 uses

@@ -17,16 +17,29 @@ fi
 printf '%s' "$FRESH" > "$TOKEN_FILE"
 chmod 600 "$TOKEN_FILE"
 
-# Log expiry for observability
-EXPIRES=$(python3 -c "
-import json, sys, datetime
+# Check expiry and log accordingly
+EXPIRY_INFO=$(python3 -c "
+import json, sys, datetime, time
 try:
     d = json.loads(sys.argv[1])
     ts = d.get('claudeAiOauth', {}).get('expiresAt', 0) / 1000
-    print(datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%dT%H:%M'))
+    expires_str = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%dT%H:%M')
+    expired = ts < time.time()
+    print(f'{expires_str} expired={expired}')
 except:
-    print('unknown')
-" "$FRESH" 2>/dev/null || echo "unknown")
+    print('unknown expired=False')
+" "$FRESH" 2>/dev/null || echo "unknown expired=False")
 
-printf '{"ts":"%s","job":"token-refresh","status":"ok","detail":"expires=%s"}\n' \
-  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$EXPIRES" >> "$REPORTS_DIR/cron.log"
+EXPIRES="${EXPIRY_INFO%% expired=*}"
+IS_EXPIRED="${EXPIRY_INFO##* expired=}"
+
+if [[ "$IS_EXPIRED" == "True" ]]; then
+  # Token in Keychain is already expired. Claude Code only refreshes Keychain during
+  # active interactive use. OAuth refresh via API endpoint not yet confirmed (see auth_token_gap.md).
+  # Cron jobs will likely fail with authentication_failed until user opens Claude Code.
+  printf '{"ts":"%s","job":"token-refresh","status":"warn","detail":"token_expired expires=%s"}\n' \
+    "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$EXPIRES" >> "$REPORTS_DIR/cron.log"
+else
+  printf '{"ts":"%s","job":"token-refresh","status":"ok","detail":"expires=%s"}\n' \
+    "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$EXPIRES" >> "$REPORTS_DIR/cron.log"
+fi

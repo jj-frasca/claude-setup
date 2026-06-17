@@ -14,7 +14,7 @@ START_SECONDS=$SECONDS
 echo "[$JOB] Starting — $TODAY"
 
 MEMORY_FILES=$(find "$HOME/.claude/projects" -path "*/memory/*.md" 2>/dev/null | sort)
-FILE_COUNT=$(echo "$MEMORY_FILES" | grep -c '.' 2>/dev/null || echo 0)
+FILE_COUNT=$(echo "$MEMORY_FILES" | grep -c '.' 2>/dev/null || true)
 
 if [[ "$FILE_COUNT" -eq 0 ]]; then
   echo "[$JOB] No memory files found. Skipping."
