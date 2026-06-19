@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Self-Heal: runs daily at 5 PM via launchd.
-# Pass 1: analyzes today's sessions → ranked fix queue JSON
+# Self-Heal: runs daily at 1 AM via launchd.
+# Pass 1: analyzes the just-completed day's sessions → ranked fix queue JSON
 # Pass 2: applies safe fixes autonomously, flags the rest to Slack
 set -euo pipefail
 
@@ -10,8 +10,16 @@ source "$SCRIPT_DIR/cron-env.sh"
 
 JOB="self-heal"
 SESSION_INDEX="$HOME/.claude/_session_logs/index.jsonl"
-REPORT_FILE="$REPORTS_DIR/$TODAY-selfheal.json"
-REMEDIATION_FILE="$REPORTS_DIR/$TODAY-selfheal-remediation.json"
+
+# Runs at 1 AM to review the day that just ended. Before 07:00 local, analyze
+# yesterday; if run manually later in the day, analyze today.
+REVIEW_DATE="$TODAY"
+if [[ 10#$(date +%H) -lt 7 ]]; then
+  REVIEW_DATE=$(date -v-1d +"%Y-%m-%d" 2>/dev/null || date -d "yesterday" +"%Y-%m-%d" 2>/dev/null || echo "$TODAY")
+fi
+
+REPORT_FILE="$REPORTS_DIR/$REVIEW_DATE-selfheal.json"
+REMEDIATION_FILE="$REPORTS_DIR/$REVIEW_DATE-selfheal-remediation.json"
 TOTAL_COST=0
 
 # ── lock guard ───────────────────────────────────────────────────────────────
@@ -29,15 +37,15 @@ add_cost() {
 # ── guard: no sessions ────────────────────────────────────────────────────────
 
 START_SECONDS=$SECONDS
-echo "[$JOB] Starting — $TODAY"
+echo "[$JOB] Starting — reviewing $REVIEW_DATE"
 
 if [[ ! -f "$SESSION_INDEX" ]]; then
-  notify_slack "🔧 Self-Heal [$TODAY]: No sessions recorded. Skipped."
+  notify_slack "🔧 Self-Heal [$REVIEW_DATE]: No sessions recorded. Skipped."
   log_cron "$JOB" "skipped" "no session index"
   exit 0
 fi
 
-TRANSCRIPT_PATHS=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
+TRANSCRIPT_PATHS=$(grep "\"ts\":\"${REVIEW_DATE}" "$SESSION_INDEX" 2>/dev/null \
   | jq -r '.transcript // empty' 2>/dev/null \
   | grep -v '^$' \
   | sort -u \
@@ -46,17 +54,17 @@ TRANSCRIPT_PATHS=$(grep "\"ts\":\"${TODAY}" "$SESSION_INDEX" 2>/dev/null \
 SESSION_COUNT=$(echo "$TRANSCRIPT_PATHS" | grep -c '.' 2>/dev/null || true)
 
 if [[ "$SESSION_COUNT" -eq 0 ]]; then
-  notify_slack "🔧 Self-Heal [$TODAY]: No sessions today. Skipped."
-  log_cron "$JOB" "skipped" "no sessions today"
+  notify_slack "🔧 Self-Heal [$REVIEW_DATE]: No sessions to review. Skipped."
+  log_cron "$JOB" "skipped" "no sessions to review"
   exit 0
 fi
 
-# ── pre-extract today's messages from each transcript ─────────────────────────
-# Sessions can span multiple days. Grep for today's timestamp prefix (UTC) so
-# Claude only sees messages that happened today, regardless of transcript size.
-# TODAY is local date; at run time (5PM PDT = midnight UTC) local and UTC dates match.
-TODAY_UTC="$TODAY"
-TODAY_UTC_NEXT=$(date -u -v+1d +"%Y-%m-%d" 2>/dev/null || date -u -d "tomorrow" +"%Y-%m-%d" 2>/dev/null || echo "")
+# ── pre-extract the reviewed day's messages from each transcript ───────────────
+# Sessions can span multiple days. Grep for the reviewed day's timestamp prefix
+# (UTC) so Claude only sees messages from that day, regardless of transcript size.
+# REVIEW_DATE is a local date; PDT=UTC-7 so that local day spans two UTC dates.
+TODAY_UTC="$REVIEW_DATE"
+TODAY_UTC_NEXT=$(date -u -j -v+1d -f "%Y-%m-%d" "$REVIEW_DATE" +"%Y-%m-%d" 2>/dev/null || date -u -d "$REVIEW_DATE +1 day" +"%Y-%m-%d" 2>/dev/null || echo "$TODAY")
 
 SESSION_EXTRACTS=""
 while IFS= read -r p; do
@@ -118,13 +126,13 @@ echo "[$JOB] Pass 1: analyzing $SESSION_COUNT session(s)..."
 
 ANALYSIS_PROMPT="You are analyzing Claude Code session transcripts to identify improvement opportunities.
 
-Today is $TODAY. Session count: $SESSION_COUNT.
+Reviewing sessions from $REVIEW_DATE. Session count: $SESSION_COUNT.
 Session titles: ${SESSION_TITLES:-(none captured yet)}
 Recent commits (24h): $GIT_LOG_24H
 Recent cron runs: $LAST_CRON
 Recent tool failures (PostToolUseFailure hook): ${RECENT_TOOL_FAILURES:-(none)}
 
-Today's messages from each session (pre-filtered by timestamp):
+Messages from each session on $REVIEW_DATE (pre-filtered by timestamp):
 $SESSION_EXTRACTS
 
 Scan for:
@@ -202,7 +210,7 @@ ABSOLUTE RULES — violating these is not allowed:
 - NEVER edit CLAUDE.md or settings.json or any launchd plist
 - NEVER delete files, branches, or git history
 - NEVER make a fix you are not confident about — skip it and mark it flagged
-- After making changes, commit with: cd ~/claude-work/.claude && git add cron/ hooks/ rules/ skills/ .gitignore && git diff --cached --quiet || (git commit -m 'self-heal: auto-apply fixes $TODAY' && git push origin master)
+- After making changes, commit with: cd ~/claude-work/.claude && git add cron/ hooks/ rules/ skills/ .gitignore && git diff --cached --quiet || (git commit -m 'self-heal: auto-apply fixes $REVIEW_DATE' && git push origin master)
 - NEVER use git add -A or git add . — only stage the specific directories listed above
 - When writing memory files, follow the existing format in ~/.claude/projects/-Users-joefrasca-claude-work/memory/ exactly
 
@@ -286,7 +294,7 @@ FINISH_TIME=$(date "+%-I:%M %p")
 ELAPSED=$(( SECONDS - START_SECONDS ))
 COST_FMT=$(printf "%.3f" "$TOTAL_COST" 2>/dev/null || echo "$TOTAL_COST")
 
-SLACK_MSG="🔧 *Self-Heal — $TODAY*
+SLACK_MSG="🔧 *Self-Heal — $REVIEW_DATE*
 $SESSION_COUNT session(s) · $ISSUE_COUNT issue(s) found · \$$COST_FMT · ${ELAPSED}s · $FINISH_TIME
 
 *Auto-applied:*
