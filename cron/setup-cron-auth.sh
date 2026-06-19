@@ -60,14 +60,19 @@ if [[ -z "$TOKEN" ]]; then
 fi
 
 echo ""
-# Extract the raw access token from JSON blob before verification
+# Keep the full credential blob for storage; extract the bare access token only
+# for the verification call. cron-env.sh / token-refresh.sh expect the full JSON
+# blob in the token file (it carries the refreshToken needed for headless OAuth
+# refresh), so storing only the access token would break auto-refresh.
+RAW_BLOB="$TOKEN"
+ACCESS_TOKEN="$TOKEN"
 if echo "$TOKEN" | jq . >/dev/null 2>&1; then
-  TOKEN=$(echo "$TOKEN" | jq -r '.claudeAiOauth.accessToken // .accessToken // .')
+  ACCESS_TOKEN=$(echo "$TOKEN" | jq -r '.claudeAiOauth.accessToken // .accessToken // .')
   echo "  Extracted access token from JSON blob."
 fi
 
 echo "Verifying token with live claude -p call..."
-export CLAUDE_CODE_OAUTH_TOKEN="$TOKEN"
+export CLAUDE_CODE_OAUTH_TOKEN="$ACCESS_TOKEN"
 
 VERIFY_OUT=$(claude -p "Reply with just the word: verified" \
   --output-format json \
@@ -85,7 +90,7 @@ VERIFY_OUT=$(claude -p "Reply with just the word: verified" \
 echo "  Verification response: $(echo "$VERIFY_OUT" | jq -r '.result // "ok"' 2>/dev/null || echo "ok")"
 
 mkdir -p "$(dirname "$TOKEN_FILE")"
-printf '%s' "$TOKEN" > "$TOKEN_FILE"
+printf '%s' "$RAW_BLOB" > "$TOKEN_FILE"
 chmod 600 "$TOKEN_FILE"
 
 echo ""
