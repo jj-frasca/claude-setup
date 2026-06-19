@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Self-Heal: runs daily at 1 AM via launchd.
+# Self-Heal: runs daily at 2 AM via launchd.
 # Pass 1: analyzes the just-completed day's sessions → ranked fix queue JSON
 # Pass 2: applies safe fixes autonomously, flags the rest to Slack
 set -euo pipefail
@@ -11,7 +11,7 @@ source "$SCRIPT_DIR/cron-env.sh"
 JOB="self-heal"
 SESSION_INDEX="$HOME/.claude/_session_logs/index.jsonl"
 
-# Runs at 1 AM to review the day that just ended. Before 07:00 local, analyze
+# Runs at 2 AM to review the day that just ended. Before 07:00 local, analyze
 # yesterday; if run manually later in the day, analyze today.
 REVIEW_DATE="$TODAY"
 if [[ 10#$(date +%H) -lt 7 ]]; then
