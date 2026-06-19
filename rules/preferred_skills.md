@@ -1,32 +1,29 @@
 # Preferred Skills & Tool Patterns
-_Auto-updated 2026-06-17 by skills-track.sh_
-_Note: skills-track runs have been intermittently failing due to OAuth token expiry; data below may be stale (last successful run: 2026-06-13)._
+_Auto-updated 2026-06-18 by skills-track.sh_
 
 ## Most-Used Tools (Last 30 Days)
-- Edit: 622 uses
-- Write: 316 uses
+- Edit: 739 uses
+- Write: 342 uses
 - unknown: 1 use
 
 ## Top File Types Touched
-- .py: 317 edits
-- .md: 206 edits
-- .sh: 143 edits
-- .tsx: 111 edits
-- .ts: 71 edits
+- .py: 340 edits
+- .md: 241 edits
+- .tsx: 160 edits
+- .sh: 155 edits
+- .ts: 84 edits
 
 ## Proactively Suggest
 - skill-builder: user describes a recurring pain point → propose a new skill
 - skill-auditor: after 10+ new log entries or weekly → audit manifest and usage
 
 ## Watch List (Inactive >14 Days)
-- skill-builder: last used 2026-05-27 (created, never invoked since)
-- skill-auditor: last used 2026-05-27 (created, never invoked since)
+- skill-builder: last used 2026-05-27 (22 days inactive, never invoked since creation)
+- skill-auditor: last used 2026-05-27 (22 days inactive, never invoked since creation)
 
 ## Notes
-- Log: 939 entries (938 valid, 1 "unknown" tool from a test entry) spanning
-  2026-05-27 to 2026-06-13.
-- .py remains #1 driven by quantforge backend/strategy/test work; .tsx (111)
-  and .ts (71) show continued frontend buildout.
-- Both manifest skills (skill-builder, skill-auditor) are now 17 days past
-  creation with zero invocations — manifest still marks them "active";
-  consider running skill-auditor or demoting to "inactive" tier.
+- Log: 1082 entries (1081 valid, 1 "unknown" tool) spanning 2026-05-27 to 2026-06-18.
+- .py dominates (#1) from quantforge backend work; .tsx (160) and .ts (84) show
+  active frontend buildout; .sh (155) reflects heavy cron/hook automation.
+- Both manifest skills exceed the 14-day inactivity threshold by 8 days; manifest
+  still marks them "active" — recommend running skill-auditor or demoting to "inactive".
