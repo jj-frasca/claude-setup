@@ -26,6 +26,12 @@ REPORTS_DIR="$HOME/.claude/_reports"
 SLACK_WEBHOOK_FILE="$HOME/.claude/.slack_webhook"
 OAUTH_TOKEN_URL="https://platform.claude.com/v1/oauth/token"
 OAUTH_CLIENT_ID="9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+# The gateway rejects a bare token request with HTTP 429 rate_limit_error; the
+# anthropic-beta header (the value Claude Code's own SDK sends) is what makes it
+# process the refresh normally. Verified live: without it → 429; with it → 200
+# (or 400 invalid_grant for a bad token). See [[auth-token-gap]].
+OAUTH_BETA="oauth-2025-04-20"
+OAUTH_USER_AGENT="claude-cli/2.1.179 (external, cli)"
 REFRESH_BUFFER=600   # refresh if <10 min of validity remains (or already expired)
 JOB="token-refresh"
 mkdir -p "$REPORTS_DIR"
@@ -82,7 +88,10 @@ REQ=$(jq -n --arg rt "$REFRESH_TOKEN" --arg cid "$OAUTH_CLIENT_ID" \
   '{grant_type: "refresh_token", refresh_token: $rt, client_id: $cid}')
 
 HTTP_RESP=$(curl -sS -m 30 -w $'\n%{http_code}' -X POST "$OAUTH_TOKEN_URL" \
-  -H 'Content-Type: application/json' -d "$REQ" 2>/dev/null)
+  -H 'Content-Type: application/json' \
+  -H "anthropic-beta: $OAUTH_BETA" \
+  -H "User-Agent: $OAUTH_USER_AGENT" \
+  -d "$REQ" 2>/dev/null)
 HTTP_CODE=$(printf '%s' "$HTTP_RESP" | tail -1)
 BODY=$(printf '%s' "$HTTP_RESP" | sed '$d')
 
