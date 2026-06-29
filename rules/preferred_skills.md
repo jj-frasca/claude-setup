@@ -1,16 +1,16 @@
 # Preferred Skills & Tool Patterns
-_Auto-updated 2026-06-22 by skills-track.sh_
+_Auto-updated 2026-06-24 by skills-track.sh_
 
 ## Most-Used Tools (Last 30 Days)
-- Edit: 834 uses
-- Write: 377 uses
+- Edit: 876 uses
+- Write: 422 uses
 - unknown: 1 use
 
 ## Top File Types Touched
 - .py: 349 edits
-- .md: 265 edits
+- .md: 332 edits
 - .tsx: 202 edits
-- .sh: 172 edits
+- .sh: 174 edits
 - .ts: 106 edits
 
 ## Proactively Suggest
@@ -18,11 +18,11 @@ _Auto-updated 2026-06-22 by skills-track.sh_
 - skill-auditor: after 10+ new log entries or weekly → audit manifest and usage
 
 ## Watch List (Inactive >14 Days)
-- skill-builder: last used 2026-05-27 (26 days inactive, never invoked since creation)
-- skill-auditor: last used 2026-05-27 (26 days inactive, never invoked since creation)
+- skill-builder: last used 2026-05-27 (28 days inactive, never invoked since creation)
+- skill-auditor: last used 2026-05-27 (28 days inactive, never invoked since creation)
 
 ## Notes
-- Log: 1212 entries (1211 valid, 1 "unknown" tool) spanning 2026-05-27 to 2026-06-22.
-- .py dominates (#1) from quantforge backend; .tsx jumped to #3 (202, up from 160)
-  showing accelerating frontend work; .sh (172) reflects cron/hook automation.
-- Both manifest skills are 26 days inactive — recommend demoting to "inactive" tier.
+- Log: 1299 entries (1298 valid, 1 "unknown" tool) spanning 2026-05-27 to 2026-06-24.
+- .py dominates (#1) from quantforge backend; .md rose to #2 (332, up from 265)
+  with growing docs/context work; .tsx holds at #3 (202) from frontend development.
+- Both manifest skills exceed 28 days inactive — recommend retiring per tier rules.
