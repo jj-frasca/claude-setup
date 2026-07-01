@@ -6,8 +6,8 @@ export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/us
 CLAUDE_TOKEN_FILE="$HOME/.claude/.claude_token"
 SLACK_WEBHOOK_FILE="$HOME/.claude/.slack_webhook"
 
-# Auto-refresh token from Keychain before checking the file.
-# Fails silently — if Keychain extraction doesn't work we fall through to the file.
+# Mirror the current Keychain credential blob into the token file for
+# diagnostics/observability. Best-effort — not used for auth.
 if _FRESH=$(security find-generic-password -s "Claude Code-credentials" -a "$(whoami)" -w 2>/dev/null) \
     && [[ -n "$_FRESH" ]]; then
   printf '%s' "$_FRESH" > "$CLAUDE_TOKEN_FILE"
@@ -15,20 +15,12 @@ if _FRESH=$(security find-generic-password -s "Claude Code-credentials" -a "$(wh
 fi
 unset _FRESH
 
-if [[ ! -f "$CLAUDE_TOKEN_FILE" ]]; then
-  echo "[cron-env] ERROR: $CLAUDE_TOKEN_FILE not found. Run cron/setup-cron-auth.sh first." >&2
-  exit 1
-fi
-
-export CLAUDE_CODE_OAUTH_TOKEN
-_RAW_TOKEN=$(cat "$CLAUDE_TOKEN_FILE")
-# Keychain returns a JSON blob; extract the accessToken if so
-if echo "$_RAW_TOKEN" | jq . >/dev/null 2>&1; then
-  CLAUDE_CODE_OAUTH_TOKEN=$(echo "$_RAW_TOKEN" | jq -r '.claudeAiOauth.accessToken // .accessToken // .')
-else
-  CLAUDE_CODE_OAUTH_TOKEN="$_RAW_TOKEN"
-fi
-unset _RAW_TOKEN
+# Auth: do NOT export a static CLAUDE_CODE_OAUTH_TOKEN. A static access token
+# can't be refreshed and goes stale between runs, and having token-refresh rotate
+# the refresh token independently desynced the CLI's own rotating token (HTTP 400
+# invalid_grant). Unset it so `claude` authenticates from Keychain and lets its
+# own token manager handle refresh + rotation as the single source of truth.
+unset CLAUDE_CODE_OAUTH_TOKEN
 
 SLACK_WEBHOOK_URL=""
 if [[ -f "$SLACK_WEBHOOK_FILE" ]]; then
