@@ -50,10 +50,10 @@ except Exception:
 " "$FRESH" 2>/dev/null || echo "unknown True")
 
 if [[ "$IS_EXPIRED" == "True" ]]; then
-  # Keychain token is past expiry. The CLI refreshes it on the next job run; if
-  # Joe is away long enough that the refresh token is also dead, jobs fail until
-  # he opens Claude Code. Logged (no Slack) to avoid every-2h alert spam.
-  log_cron "warn" "token_expired expires=$EXPIRES (CLI refreshes on next use)"
+  # With the CLI-as-sole-refresher architecture, an expired Keychain token is
+  # expected between CLI runs — the CLI refreshes it automatically on next use.
+  # Log as "ok" to avoid misleading health signals; expiry is informational only.
+  log_cron "ok" "token_expired expires=$EXPIRES (CLI refreshes on next use, no action needed)"
 else
   log_cron "ok" "expires=$EXPIRES"
 fi
