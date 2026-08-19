@@ -130,8 +130,11 @@ if [[ -n "$PEER_PIDS" ]]; then
 
 ⚠️ ANOTHER CLAUDE SESSION IS WRITING THIS SAME WORKING TREE RIGHT NOW (PID(s):$PEER_PIDS).
 It is a peer, not your subagent, and it is not coordinating with you. Therefore:
-  - Stage ONLY explicit paths you wrote. NEVER \`git add -A\`, \`git add .\`, or \`git commit -a\`
-    — you would sweep up the other session's half-finished edits into your commit.
+  - COMMIT WITH AN EXPLICIT PATHSPEC: \`git commit -F <msg> -- path/a path/b\`. A bare
+    \`git commit\` (even after \`git add <your files>\`) commits the ENTIRE staged index — including
+    files the PEER has staged. On 2026-08-19 a bare commit swept a peer's staged ADR doc into an
+    unrelated commit exactly this way. The \`-- <paths>\` form commits only those paths, period.
+  - Stage ONLY explicit paths you wrote. NEVER \`git add -A\`, \`git add .\`, or \`git commit -a\`.
   - Before each commit, re-check \`git status\` and confirm every staged path is yours.
   - If you find work in the tree you did not write, leave it alone. Do not commit it,
     revert it, or stash it.
