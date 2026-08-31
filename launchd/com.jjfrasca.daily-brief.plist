@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Joe's 8am QuantForge brief (cron/daily-brief.sh), emailed via `gws gmail +send`.
+
+  Two clock slots, not one. A missed StartCalendarInterval runs on wake, but it does not
+  retry a slot that fired into a broken environment - and on 2026-08-31 an expired OAuth
+  token killed a scheduled run 51 seconds in. The 11:00 slot is the retry; daily-brief.sh
+  writes a per-day sent-marker and exits early, so it is a no-op whenever 08:00 succeeded.
+
+  Install:
+    cp .claude/launchd/com.jjfrasca.daily-brief.plist ~/Library/LaunchAgents/
+    launchctl unload ~/Library/LaunchAgents/com.jjfrasca.daily-brief.plist 2>/dev/null
+    launchctl load   ~/Library/LaunchAgents/com.jjfrasca.daily-brief.plist
+-->
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/joefrasca</string>
+		<key>PATH</key>
+		<string>/Users/joefrasca/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<key>SHELL</key>
+		<string>/bin/zsh</string>
+		<key>USER</key>
+		<string>joefrasca</string>
+	</dict>
+	<key>Label</key>
+	<string>com.jjfrasca.daily-brief</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/joefrasca/claude-work/.claude/cron/daily-brief.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/joefrasca/.claude/_reports/cron-daily-brief.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/joefrasca/.claude/_reports/cron-daily-brief.log</string>
+	<key>StartCalendarInterval</key>
+	<array>
+		<dict>
+			<key>Hour</key>
+			<integer>8</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+		</dict>
+		<dict>
+			<key>Hour</key>
+			<integer>11</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+		</dict>
+	</array>
+</dict>
+</plist>
