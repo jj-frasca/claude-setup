@@ -166,7 +166,7 @@ Sort by severity descending. Return ONLY the JSON."
 
 ANALYSIS_RESPONSE=$(run_claude "$REPORTS_DIR/cron-selfheal-err.log" \
   "$ANALYSIS_PROMPT" \
-  --model claude-sonnet-4-6 \
+  --model sonnet \
   --allowedTools "Bash" \
   --output-format json \
   --no-session-persistence \
@@ -235,7 +235,7 @@ After applying all fixes and committing, return ONLY this JSON:
 
   REMEDIATION_RESPONSE=$(run_claude "$REPORTS_DIR/cron-selfheal-remediation-err.log" \
     "$REMEDIATION_PROMPT" \
-    --model claude-sonnet-4-6 \
+    --model sonnet \
     --allowedTools "Read,Write,Edit,Bash" \
     --output-format json \
     --no-session-persistence \

@@ -89,7 +89,7 @@ After writing the file, output ONLY this JSON (no other text):
 
 RESPONSE=$(run_claude "$REPORTS_DIR/cron-skills-err.log" \
   "$PROMPT" \
-  --model claude-sonnet-4-6 \
+  --model sonnet \
   --allowedTools "Read,Write" \
   --output-format json \
   --no-session-persistence \

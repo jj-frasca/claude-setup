@@ -34,8 +34,13 @@ RUN_LOG="$REPORTS_DIR/qf-autonomous-$(date +%Y%m%d-%H%M).log"
 QF_WEEKLY_RUN_BUDGET="${QF_WEEKLY_RUN_BUDGET:-21}"   # sessions per ISO week (35 slots exist)
 QF_DAILY_RUN_CAP="${QF_DAILY_RUN_CAP:-3}"            # sessions per calendar day (5 slots exist)
 QF_MAX_SECONDS="${QF_MAX_SECONDS:-17400}"            # 4h50m — dead before the next slot fires
-QF_MODEL="${QF_MODEL:-opus}"                         # most agentic work available
-QF_FALLBACK_MODEL="${QF_FALLBACK_MODEL:-sonnet}"     # keep working after the opus limit
+# 2026-09-22: moved off opus for unattended runs per Joe's directive (fable5-or-sonnet
+# for automation, opus reserved for interactive work). Fallback stays sonnet, not fable —
+# Fable 5 currently errors "requires usage credits" (exit 1) on this account, so pointing
+# a fallback at it would just fail the same way the primary would. Revisit once that's
+# resolved; fable is likely the better fit for prose (see daily-brief.sh).
+QF_MODEL="${QF_MODEL:-sonnet}"                       # agentic coding work
+QF_FALLBACK_MODEL="${QF_FALLBACK_MODEL:-sonnet}"     # kept distinct from QF_MODEL by env, not model choice, until fable is usable
 QF_ENABLED="${QF_ENABLED:-1}"
 QF_DRY_RUN="${QF_DRY_RUN:-0}"                        # 1 = run guards, print prompt, skip claude
 

@@ -70,7 +70,7 @@ Return ONLY the JSON summary at the end, nothing else."
 
 RESPONSE=$(run_claude "$REPORTS_DIR/cron-memory-err.log" \
   "$PROMPT" \
-  --model claude-sonnet-4-6 \
+  --model sonnet \
   --allowedTools "Read,Write,Edit,Bash" \
   --output-format json \
   --no-session-persistence \
