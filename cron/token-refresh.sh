@@ -39,17 +39,27 @@ fi
 printf '%s' "$FRESH" > "$TOKEN_FILE"
 chmod 600 "$TOKEN_FILE"
 
-read -r EXPIRES IS_EXPIRED < <(python3 -c "
+read -r EXPIRES IS_EXPIRED HAS_REFRESH < <(python3 -c "
 import json, sys, time, datetime
 try:
     d = json.loads(sys.argv[1]).get('claudeAiOauth', {})
     ts = d.get('expiresAt', 0) / 1000
-    print(datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%dT%H:%M'), ts < time.time())
+    has_refresh = bool(d.get('refreshToken'))
+    print(datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%dT%H:%M'), ts < time.time(), has_refresh)
 except Exception:
-    print('unknown', True)
-" "$FRESH" 2>/dev/null || echo "unknown True")
+    print('unknown', True, False)
+" "$FRESH" 2>/dev/null || echo "unknown True False")
 
-if [[ "$IS_EXPIRED" == "True" ]]; then
+# 2026-09-21 incident: the Keychain credential decayed to an EMPTY refreshToken and
+# expiresAt=0 (epoch) sometime around 2026-09-15/16. This script logged "ok" through the
+# whole 6-day gap because it only ever checked "expired", never "dead" — an expired token
+# with a live refresh token is normal between CLI runs, but an empty refresh token cannot
+# self-heal no matter how many times `claude -p` runs. Nothing short of an interactive
+# `claude` login recovers it, so this state must alert loudly, not log "ok".
+if [[ "$HAS_REFRESH" != "True" ]]; then
+  log_cron "error" "DEAD credential — refreshToken empty, cannot self-refresh (expires=$EXPIRES). Run: claude (interactive) to re-auth."
+  notify_slack "🔴 token-refresh: OAuth credential is DEAD (empty refresh token). Cron cannot recover this — run \`claude\` interactively to re-auth. Every claude -p cron job will fail until this is fixed."
+elif [[ "$IS_EXPIRED" == "True" ]]; then
   # With the CLI-as-sole-refresher architecture, an expired Keychain token is
   # expected between CLI runs — the CLI refreshes it automatically on next use.
   # Log as "ok" to avoid misleading health signals; expiry is informational only.
